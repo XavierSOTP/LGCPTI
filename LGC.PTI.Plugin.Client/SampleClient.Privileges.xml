@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ModulePrivileges>
+  <Resources fallbackLanguage="en">
+    <Image name="CanViewIcon" type="Base64">iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAA/1BMVEX///8AAAAAAAAAAAAREREAAAAxMTEqKioAAAAAAAAAAAAAAAAAAAAAAAAhISEICAgAAAApKSkAAAAeHh4AAAA4ODhLS0stLS0nJyclJSUsLCwyMjI0NDQWFhYICAg8PDwtLS0KCgoqKioMDAwQEBAqKiofHx8hISEVFRWRkZEtLS0xMTGHh4dbW1tEREQ9PT1vb29sbGw6OjqgoKBTU1NmZmaFhYVcXFw4ODgAAACIiIhHR0dwcHBubm58fHwfHx8ICAg2NjYjIyM7OztXV1d0dHRVVVVtbW0MDAxgYGBaWlpQUFB5eXkzMzMQEBBdXV1ra2slJSVqamoyMjJNTU1OAr0/AAAAKXRSTlMAHUkk2TeA+gcUNEICCOTRDu4b3BUuLqeq0b4obu/9vm796f39KOnR76F2vbwAAADASURBVHhebcw1dgQxFETRP1bjIDOYQWpmGkYz738t/kenJ/MLKrhBwb/ZL/mecl2iH4nr5tB5p6GWJBYNH7scpI3j7PR45zgbicPw16OHOfv0qHXO4e7box96vEe+4nD9evp4ugHsdhVEfm3Oan4QrUYI42W6sIXnL8FOF8sLhN4PQksUWwhvfYSBiVAFqCKY9wgP2SwwGgANYxZkE4Qp2641GUDWtmt2CaCopFg645WKRFWgXKm3mwVes12vlP8AF1wczZZz+oUAAAAASUVORK5CYII=</Image>
+  </Resources>
+  <Privileges>
+    <Privilege image="CanViewIcon"
+               priority="5"
+               description="Sensor custom task"
+               type="Task"
+               parentId="{38ACC600-4A32-44ff-8DF5-0797D888930B}"
+               id="{E293329D-A1BF-4D20-8412-39F43CCB8C57}"/>
+  </Privileges>
+</ModulePrivileges>
+

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Refit\Common\**" />
+    <EmbeddedResource Remove="Refit\Common\**" />
+    <None Remove="Refit\Common\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Refit\Common\IRefitDynamicUrlManager.cs" />
+    <Compile Include="Refit\Common\PTIDynamicUrlManager.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LGC.PTI.Domain.Common\LGC.PTI.Domain.Common.csproj" />
+  </ItemGroup>
+</Project>

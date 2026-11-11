@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Configurations>Debug;Release;FakeApi</Configurations>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PolySharp" Version="1.13.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="SoftSolute.Plugin.Exe.SC513" Version="1.1.6" />
+    <PackageReference Include="SoftSolute.Sdk.Common.SC513" Version="1.1.432" />
+    <PackageReference Include="SoftSolute.Sdk.Report.SC513" Version="1.1.432" />
+    <PackageReference Include="SS.Common.Utilities" Version="0.7.51" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LGC.PTI.Domain.Common\LGC.PTI.Domain.Common.csproj" />
+    <ProjectReference Include="..\LGC.PTI.HTTPClient\LGC.PTI.HTTPClient.csproj" />
+    <ProjectReference Include="..\LGC.PTI.Infrastructure\LGC.PTI.Infrastructure.csproj" />
+    <ProjectReference Include="..\SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Genetec.Sdk">
+      <HintPath>C:\Program Files (x86)\Genetec Security Center 5.13 SDK\Genetec.Sdk.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

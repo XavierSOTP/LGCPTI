@@ -1,0 +1,184 @@
+[
+  {
+    "firstName": "Beauregard",
+    "lastName": "Alexandre",
+    "employeeNumber": "177",
+    "badge": "02142",
+    "language": "Français",
+    "active": false,
+    "department": "Cribtec Mécaniciens"
+  },
+  {
+    "firstName": "Guillaume",
+    "lastName": "Andrews",
+    "employeeNumber": "178",
+    "badge": "189-02691",
+    "language": "Français",
+    "active": false,
+    "department": "Cribtec Electriciens"
+  },
+  {
+    "firstName": "Tommy",
+    "lastName": "Arsenault",
+    "employeeNumber": "169",
+    "badge": "189-02573",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Mécaniciens"
+  },
+  {
+    "firstName": "Hugo",
+    "lastName": "Asselin",
+    "employeeNumber": "183",
+    "badge": "189-03127",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Mécaniciens"
+  },
+  {
+    "firstName": "Hugo",
+    "lastName": "Asselin",
+    "employeeNumber": "183",
+    "badge": "189-03127",
+    "language": "Français",
+    "active": false,
+    "department": "Cribtec Mécaniciens"
+  },
+  {
+    "firstName": "Baribeau",
+    "lastName": "Audrey",
+    "employeeNumber": "3",
+    "badge": "00806",
+    "language": "Français",
+    "active": false,
+    "department": "APPROVISIONNEMENT"
+  },
+  {
+    "firstName": "Steeves",
+    "lastName": "Beaudry",
+    "employeeNumber": "10",
+    "badge": "189-00640",
+    "language": "Français",
+    "active": true,
+    "department": "APPROVISIONNEMENT"
+  },
+  {
+    "firstName": "Jeremy",
+    "lastName": "Becquereau",
+    "employeeNumber": "167",
+    "badge": "189-02536",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Electriciens"
+  },
+  {
+    "firstName": "Michel",
+    "lastName": "Belanger",
+    "employeeNumber": "46",
+    "badge": "189-00022",
+    "language": "Français",
+    "active": true,
+    "department": "OPERATIONS"
+  },
+  {
+    "firstName": "Pascal",
+    "lastName": "Bergeron",
+    "employeeNumber": "43",
+    "badge": "189-00151",
+    "language": "Français",
+    "active": false,
+    "department": "ENTRETIEN"
+  },
+  {
+    "firstName": "Martin",
+    "lastName": "Bernier",
+    "employeeNumber": "87",
+    "badge": "189-02234",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Mécaniciens"
+  },
+  {
+    "firstName": "Alexandre",
+    "lastName": "Bherer",
+    "employeeNumber": "160",
+    "badge": "189-01989",
+    "language": "Français",
+    "active": true,
+    "department": "OPERATIONS"
+  },
+  {
+    "firstName": "Alexandre",
+    "lastName": "Bherer",
+    "employeeNumber": "160",
+    "badge": "189-01989",
+    "language": "Français",
+    "active": false,
+    "department": "OPERATIONS"
+  },
+  {
+    "firstName": "Mario",
+    "lastName": "Bilodeau",
+    "employeeNumber": "113",
+    "badge": "189-00610",
+    "language": "Français",
+    "active": true,
+    "department": "ADMINISTRATION"
+  },
+  {
+    "firstName": "Jerome",
+    "lastName": "Boily",
+    "employeeNumber": "69",
+    "badge": "189-00268",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Electriciens"
+  },
+  {
+    "firstName": "Vincent",
+    "lastName": "Boily",
+    "employeeNumber": "72",
+    "badge": "189-00922",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Electriciens"
+  },
+  {
+    "firstName": "Benny",
+    "lastName": "Bouchard",
+    "employeeNumber": "186",
+    "badge": "189-02180",
+    "language": "Français",
+    "active": false,
+    "department": "Cribtec Electriciens"
+  },
+  {
+    "firstName": "Benny",
+    "lastName": "Bouchard",
+    "employeeNumber": "186",
+    "badge": "189-02180",
+    "language": "Français",
+    "active": true,
+    "department": "Cribtec Electriciens"
+     
+  },
+  {
+    "firstName": "Patrick",
+    "lastName": "Boudreault",
+    "employeeNumber": "105",
+    "badge": "189-02101",
+    "language": "Français",
+    "active": true,
+    "department": "ENTRETIEN"
+  },
+  {
+    "firstName": "Charles",
+    "lastName": "Bruneau",
+    "employeeNumber": "50",
+    "badge": "189-00788",
+    "language": "Français",
+    "active": true,
+    "department": "OPERATIONS"
+  }
+
+]

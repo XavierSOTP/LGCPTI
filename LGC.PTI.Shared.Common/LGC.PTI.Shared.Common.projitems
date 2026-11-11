@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>ba289ed5-81ea-4abf-9eb0-1884832a7bab</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>LGC.PTI.Shared.Common</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\LGC.PTI.Shared.Common\LGCPTIAppExitManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Infrastructure\ExternalApi\Dtos\EmployeesResponse.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Models\CardholderModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Models\CardNumberHelper.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\PTITodoCode.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Infrastructure\ExternalApi\Dtos\EmployeeBaseDto.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Mapping\CardholderModelRegister.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Mapping\MapsterModule.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Models\EmployeeBuilder.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Directory.Build.props" />
+  </ItemGroup>
+</Project>

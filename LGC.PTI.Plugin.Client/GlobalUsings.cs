@@ -1,0 +1,15 @@
+﻿global using CommunityToolkit.Mvvm.Input;
+global using Genetec.Sdk;
+global using Genetec.Sdk.Diagnostics.Logging.Core;
+global using Genetec.Sdk.Entities;
+global using Genetec.Sdk.Entities.Utilities;
+global using Genetec.Sdk.Workspace.Services;
+global using System;
+global using System.Collections.Generic;
+global using System.IO;
+global using System.Reflection;
+global using System.Threading.Tasks;
+global using System.Windows;
+global using System.Windows.Input;
+global using System.Windows.Media;
+global using File = System.IO.File;

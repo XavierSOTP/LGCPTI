@@ -1,0 +1,67 @@
+diff a/SdkTrainingSkeletons.Plugin_Completed/SampleClient/SampleClientModule.cs b/SdkTrainingSkeletons.Plugin_Completed/SampleClient/SampleClientModule.cs	(rejected hunks)
+@@ -24,41 +24,42 @@
+         {
+             if (Workspace.ApplicationType == ApplicationType.ConfigTool)
+             {
+-                m_configPage = new SamplePluginConfigPage();
+-                m_configPage.Initialize(Workspace);
+-                var configurationService = Workspace.Services.Get<IConfigurationService>();
+-                configurationService?.Register(m_configPage);
++                ///TODO: 
++                /// 1- instantiate : m_configPage = new ...
++                /// 2- Initialize your config page
++                /// 3- Get the IConfigurationService
++                /// 4- Register your plugin config page via the IConfigurationService
+             }
+ 
+             if (Workspace.ApplicationType == ApplicationType.SecurityDesk)
+             {
+-                m_sensorReportPage = new CreatePageTask<SensorReportPage>();
+-                m_sensorReportPage.Initialize(Workspace);
+-                Workspace.Tasks.Register(m_sensorReportPage);
++                ///TODO :
++                /// 1- instantiate : m_sensorReportPage = new Crate......
++                /// 2- Call the Initialize method of the page itself
++                /// 3- Register your report in the workspace
++                ///
++
++
++                ///TODO :
++                /// 1- instantiate : m_customTask = new Crate......
++                /// 2- Call the Initialize method of the page itself
++                /// 3- Register your custom page in the workspace
++                ///
+ 
+-                m_customTask = new CreatePageTask<PageSample>(true);
+-                m_customTask.Initialize(Workspace);
+-                Workspace.Tasks.Register(m_customTask);
+             }
+         }
+ 
+         public override void Unload()
+         {
+-            if (m_configPage != null)
+-            {
+-                var configurationService = Workspace.Services.Get<IConfigurationService>();
+-                configurationService?.Unregister(m_configPage);
+-            }
++            ///TODO: Config page
++            /// 1- Get the IConfigurationService
++            /// 2- Unregister your plugin config page via the IConfigurationService
+ 
+-            if (m_customTask != null)
+-            {
+-                Workspace.Tasks.Unregister(m_customTask);
+-            }
++            /// TODO: report
++            /// 1- Unregister the report from the workspace
+ 
+-            if (m_sensorReportPage != null)
+-            {
+-                Workspace.Tasks.Unregister(m_sensorReportPage);
+-            }
++            /// TODO : custom task
++            /// 2- Unregister the custom task from the workspace
+         }
+ 
+         private Assembly OnCurrentDomainAssemblyResolve(object sender, ResolveEventArgs args)
