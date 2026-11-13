@@ -21,5 +21,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LGC.PTI.Domain.Common\LGC.PTI.Domain.Common.csproj" />
+    <ProjectReference Include="..\LGC.PTI.GraphQL.Transport\LGC.PTI.GraphQL.Transport.csproj" />
   </ItemGroup>
 </Project>
