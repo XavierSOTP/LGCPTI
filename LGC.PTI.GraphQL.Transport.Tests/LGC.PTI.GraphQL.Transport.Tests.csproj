@@ -10,6 +10,7 @@
     <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Mapster" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LGC.PTI.GraphQL.Transport\LGC.PTI.GraphQL.Transport.csproj" />
@@ -25,5 +26,7 @@
     <Compile Include="..\LGC.PTI.Shared.Common\Infrastructure\ExternalApi\Dtos\EmployeeBaseDto.cs" Link="Production\EmployeeBaseDto.cs" />
     <Compile Include="..\LGC.PTI.Shared.Common\Infrastructure\ExternalApi\Dtos\EmployeesResponse.cs" Link="Production\EmployeesResponse.cs" />
     <Compile Include="..\LGC.PTI.Shared.Common\Models\CardNumberHelper.cs" Link="Production\CardNumberHelper.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Mapping\CardholderModelRegister.cs" Link="Production\CardholderModelRegister.cs" />
+    <Compile Include="..\LGC.PTI.Domain.Common\EmployeeEntity.cs" Link="Production\EmployeeEntity.cs" />
   </ItemGroup>
 </Project>
