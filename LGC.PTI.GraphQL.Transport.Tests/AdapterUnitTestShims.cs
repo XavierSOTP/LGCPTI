@@ -64,3 +64,20 @@ namespace SoftSolute.Common.Utilities.LanguageExtSS
             predicate(value) ? (Option<T>)value : Option<T>.None;
     }
 }
+
+namespace LGC.PTI.Common.Infrastructure.ExternalApi.Dtos
+{
+    public sealed class FullEmployeeResetPin
+    {
+        public string EmployeeNumber { get; set; }
+        public string Pin { get; set; }
+    }
+}
+
+namespace LGC.PTI.Domain.Models
+{
+    public sealed class EmployeeModel
+    {
+        public string EmployeeNumber { get; set; }
+    }
+}
