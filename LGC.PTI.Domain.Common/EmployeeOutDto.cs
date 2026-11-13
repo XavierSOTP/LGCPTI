@@ -11,6 +11,10 @@ public sealed class EmployeeOutDto : EmployeeBaseDto
 {
     #region Public Properties
 
+    /// <summary>PIN sent to GraphQL only. Never serialize into the legacy REST employee body.</summary>
+    [JsonIgnore]
+    public string Pin { get; set; }
+
     /// <summary>
     /// Gets or sets a value indicating whether the employee is active.
     /// </summary>
