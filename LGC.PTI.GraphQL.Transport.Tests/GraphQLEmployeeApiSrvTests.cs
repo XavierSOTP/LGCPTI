@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using LGC.PTI.Domain;
+using LGC.PTI.Domain.Models;
+using LGC.PTI.Domain.Mapping;
+using Mapster;
 using LGC.PTI.GraphQL.Transport;
 using LGC.PTI.HTTPClient.GraphQL;
 using Newtonsoft.Json;
@@ -185,6 +188,26 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             Assert.AreEqual("00123", CardNumberHelper.TryGetCardNumberText("qsl_00123").IfNone(""));
             Assert.AreEqual("00123", CardNumberHelper.TryGetCardNumberText("qsl-00123").IfNone(""));
             Assert.AreEqual(123, CardNumberHelper.TryGetCardNumber("qsl_00123").IfNone(-1));
+        }
+
+        [TestCase("qsl_00123", "00123")]
+        [TestCase("qsl-00123", "00123")]
+        [TestCase(null, "123")]
+        public void EmployeeEntityToEmployeeOutDto_MapsterUsesOriginalPinWhenAvailable(string credentialName, string expectedPin)
+        {
+            var config = new TypeAdapterConfig();
+            new EmployeeModelRegister().Register(config);
+            var employee = new EmployeeEntity
+            {
+                EmployeeNumber = "99990001", Pin = 123, CredName = credentialName,
+                FirstName = "Genetec", LastName = "IntegrationTest", Department = "pti",
+                Badge = "7281-00123", Active = true
+            };
+
+            var mapped = employee.Adapt<EmployeeOutDto>(config);
+            Assert.AreEqual(expectedPin, mapped.Pin);
+            Assert.AreEqual("99990001", mapped.EmployeeNumber);
+            Assert.IsNull(JObject.Parse(JsonConvert.SerializeObject(mapped))["Pin"]);
         }
 
         [Test]
