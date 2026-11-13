@@ -1,17 +1,24 @@
-name: GraphQL transport unit tests
+name: GraphQL transport and adapter unit tests
 
 on:
   pull_request:
     paths:
       - 'LGC.PTI.GraphQL.Transport/**'
       - 'LGC.PTI.GraphQL.Transport.Tests/**'
+      - 'LGC.PTI.HTTPClient/GraphQL/**'
+      - 'LGC.PTI.Domain.Common/EmployeeOutDto.cs'
+      - 'LGC.PTI.Shared.Common/Models/CardNumberHelper.cs'
       - '.github/workflows/graphql-transport-tests.yml'
   push:
     branches:
-      - 'feature/graphql-transport-unit-tests'
+      - main
+      - feature/graphql-transport-unit-tests
     paths:
       - 'LGC.PTI.GraphQL.Transport/**'
       - 'LGC.PTI.GraphQL.Transport.Tests/**'
+      - 'LGC.PTI.HTTPClient/GraphQL/**'
+      - 'LGC.PTI.Domain.Common/EmployeeOutDto.cs'
+      - 'LGC.PTI.Shared.Common/Models/CardNumberHelper.cs'
       - '.github/workflows/graphql-transport-tests.yml'
 
 jobs:
@@ -22,5 +29,5 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Test GraphQL transport without PTI credentials
+      - name: Run isolated transport and adapter tests without PTI credentials
         run: dotnet test LGC.PTI.GraphQL.Transport.Tests/LGC.PTI.GraphQL.Transport.Tests.csproj --configuration Release
