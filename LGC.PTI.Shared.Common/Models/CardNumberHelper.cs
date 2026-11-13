@@ -39,6 +39,14 @@ public static class CardNumberHelper
         return result.Map(int.Parse);
     }
 
+    /// <summary>Returns the original card number text, retaining leading zeros for GraphQL PINs.</summary>
+    public static Option<string> TryGetCardNumberText(string credentialName)
+    {
+        if (string.IsNullOrWhiteSpace(credentialName)) return Option<string>.None;
+        var match = _regex.Match(credentialName);
+        return match.Success && match.Groups["cardNumber"].Success ? (Option<string>)match.Groups["cardNumber"].Value : Option<string>.None;
+    }
+
     #endregion Public Methods
 
     #region Private Fields
