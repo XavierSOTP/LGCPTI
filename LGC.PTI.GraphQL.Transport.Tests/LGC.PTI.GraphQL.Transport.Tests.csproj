@@ -14,4 +14,16 @@
   <ItemGroup>
     <ProjectReference Include="..\LGC.PTI.GraphQL.Transport\LGC.PTI.GraphQL.Transport.csproj" />
   </ItemGroup>
+  <!-- Compile the exact production adapter/DTO/helper sources with test-only shims; no Genetec SDK or private NuGet feeds required. -->
+  <ItemGroup>
+    <Compile Include="..\LGC.PTI.HTTPClient\GraphQL\GraphQLEmployeeApiSrv.cs" Link="Production\GraphQLEmployeeApiSrv.cs" />
+    <Compile Include="..\LGC.PTI.HTTPClient\Refit\Employees\IEmployeeApiSrv.cs" Link="Production\IEmployeeApiSrv.cs" />
+    <Compile Include="..\LGC.PTI.Domain.Common\EmployeeOutDto.cs" Link="Production\EmployeeOutDto.cs" />
+    <Compile Include="..\LGC.PTI.Domain.Common\EmployeeInDto.cs" Link="Production\EmployeeInDto.cs" />
+    <Compile Include="..\LGC.PTI.Domain.Common\EmployeeStatusOutDto.cs" Link="Production\EmployeeStatusOutDto.cs" />
+    <Compile Include="..\LGC.PTI.Domain.Common\Language.cs" Link="Production\Language.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Infrastructure\ExternalApi\Dtos\EmployeeBaseDto.cs" Link="Production\EmployeeBaseDto.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Infrastructure\ExternalApi\Dtos\EmployeesResponse.cs" Link="Production\EmployeesResponse.cs" />
+    <Compile Include="..\LGC.PTI.Shared.Common\Models\CardNumberHelper.cs" Link="Production\CardNumberHelper.cs" />
+  </ItemGroup>
 </Project>
