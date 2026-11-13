@@ -37,7 +37,7 @@ namespace LGC.PTI.Domain.Mapping
             // Create and update new employee
             config
                .NewConfig<EmployeeEntity, EmployeeOutDto>()
-               .AfterMapping((src, dest) => dest.EmployeeNumber = src.EmployeeNumber.ToString(CultureInfo.InvariantCulture));
+               .AfterMapping((src, dest) => { dest.EmployeeNumber = src.EmployeeNumber.ToString(CultureInfo.InvariantCulture); dest.Pin = CardNumberHelper.TryGetCardNumberText(src.CredName).IfNone(src.Pin.ToString(CultureInfo.InvariantCulture)); });
 
             //DB
 
