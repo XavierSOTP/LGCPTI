@@ -90,7 +90,8 @@ namespace LGC.PTI.GraphQL.Transport
             }
 
             ThrowGraphQLErrors(response);
-            var node = response["data"]?[field];
+            var data = response["data"] as JObject;
+            var node = data?[field];
             if (!(node is JArray employees)) throw new GraphQLRequestException("GraphQL response did not contain a valid " + field + " array.");
             var parsed = employees.ToObject<List<Employee>>();
             if (parsed == null || parsed.Any(x => x == null || !string.IsNullOrWhiteSpace(x.Error) ||
