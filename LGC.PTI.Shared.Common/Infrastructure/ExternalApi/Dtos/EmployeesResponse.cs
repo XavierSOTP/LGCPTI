@@ -10,6 +10,10 @@ public class EmployeesResponse
 {
     #region Public Properties
 
+    /// <summary>GraphQL mutation status (new/updated); absent from legacy REST JSON responses.</summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public string OperationStatus { get; set; }
+
     /// <summary>
     /// Gets or sets the collection of errors returned by the operation.
     /// </summary>
