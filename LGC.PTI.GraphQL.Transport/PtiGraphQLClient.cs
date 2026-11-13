@@ -19,6 +19,8 @@ namespace LGC.PTI.GraphQL.Transport
         [JsonProperty("lastName")] public string LastName { get; set; }
         [JsonProperty("departmentNumber")] public string DepartmentNumber { get; set; }
         [JsonProperty("active")] public bool Active { get; set; }
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)] public string Type { get; set; }
+        [JsonProperty("unrestrictedUsage", NullValueHandling = NullValueHandling.Ignore)] public bool? UnrestrictedUsage { get; set; }
     }
 
     public sealed class Employee
@@ -30,14 +32,16 @@ namespace LGC.PTI.GraphQL.Transport
         [JsonProperty("departmentNumber")] public string DepartmentNumber { get; set; }
         [JsonProperty("active")] public bool Active { get; set; }
         [JsonProperty("deleted")] public bool Deleted { get; set; }
+        [JsonProperty("type")] public string Type { get; set; }
+        [JsonProperty("unrestrictedUsage")] public bool? UnrestrictedUsage { get; set; }
         [JsonProperty("status")] public string Status { get; set; }
         [JsonProperty("error")] public string Error { get; set; }
     }
 
     /// <summary>Standalone GraphQL transport. Does not reference the legacy GraphQL project or the REST adapter.</summary>
-    public sealed class PtiGraphQLClient
+    public sealed class PtiGraphQLClient : IPtiGraphQLClient
     {
-        private const string EmployeeFields = "number pin firstName lastName departmentNumber active deleted status error";
+        private const string EmployeeFields = "number pin firstName lastName departmentNumber active deleted type unrestrictedUsage status error";
         private const string LoginMutation = "mutation Login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }";
         private readonly HttpClient _http;
         private readonly string _email;
