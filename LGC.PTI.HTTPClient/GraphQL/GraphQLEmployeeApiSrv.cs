@@ -1,6 +1,8 @@
 using LanguageExt;
 using LGC.PTI.Common.Application.Dtos;
 using LGC.PTI.Common.Infrastructure.ExternalApi.Dtos;
+using LGC.PTI.EmployeeSync.Application;
+using LGC.PTI.EmployeeSync.Domain;
 using LGC.PTI.GraphQL.Transport;
 using LGC.PTI.HTTPClient.Refit.Employees;
 using SoftSolute.Common.Utilities;
@@ -11,83 +13,85 @@ using System.Linq;
 namespace LGC.PTI.HTTPClient.GraphQL
 {
     /// <summary>
-    /// Adapts the existing IEmployeeApiSrv contract to the new PTI GraphQL API.
-    /// This service is deliberately not registered in DI until the migration is ready.
+    /// Legacy IEmployeeApiSrv inbound adapter. It translates REST-shaped requests to the
+    /// PTI synchronization use cases without leaking GraphQL into the domain.
+    /// Not registered in DI until the migration is ready.
     /// </summary>
     public sealed class GraphQLEmployeeApiSrv : IEmployeeApiSrv
     {
         private readonly IPtiGraphQLClient _client;
+        private readonly EmployeeSynchronizationService _synchronization;
 
         public GraphQLEmployeeApiSrv(IPtiGraphQLClient client)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
+            _synchronization = new EmployeeSynchronizationService(new GraphQLEmployeeGateway(client));
         }
 
-        public Aff<IReadOnlyCollection<EmployeeInDto>> TryGetEmployees() => LanguageExtAffExtensions.Aff<IReadOnlyCollection<EmployeeInDto>>(async () =>
-        {
-            var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
-            return employees.Select(ToDto).ToList();
-        });
-
-        public Aff<EmployeeInDto> TryGetEmployee(NotEmptyString employeeId) => LanguageExtAffExtensions.Aff<EmployeeInDto>(async () =>
-        {
-            var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
-            var found = employees.FirstOrDefault(x => string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
-            return found == null ? new EmployeeInDto() : ToDto(found);
-        });
-
-        public Aff<Option<EmployeeInDto>> TryGetEmployeeOptional(NotEmptyString employeeId) => LanguageExtAffExtensions.Aff<Option<EmployeeInDto>>(async () =>
-        {
-            var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
-            var found = employees.FirstOrDefault(x => string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
-            return found == null ? Option<EmployeeInDto>.None : (Option<EmployeeInDto>)ToDto(found);
-        });
-
-        public Aff<EmployeesResponse> TryCreateEmployee(NotNull<EmployeeOutDto> employee) => Upsert(employee.Value);
-
-        public Aff<EmployeesResponse> TryUpdateEmployee(NotNull<EmployeeOutDto> employee) => Upsert(employee.Value);
-
-        public Aff<EmployeesResponse> TryUpdateEmployeeStatus(NotNull<EmployeeStatusOutDto> status) => LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
-        {
-            var employeeNumber = status.Value.EmployeeNumber;
-            var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
-            var matches = employees.Where(x => !x.Deleted && string.Equals(x.Number, employeeNumber, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (matches.Count != 1) throw new InvalidOperationException($"Cannot safely update PTI employee status for {employeeNumber}: found {matches.Count} non-deleted matches.");
-
-            var existing = matches[0];
-            var input = new EmployeeInput
+        public Aff<IReadOnlyCollection<EmployeeInDto>> TryGetEmployees() =>
+            LanguageExtAffExtensions.Aff<IReadOnlyCollection<EmployeeInDto>>(async () =>
             {
-                Number = existing.Number,
-                Pin = existing.Pin,
-                FirstName = existing.FirstName,
-                LastName = existing.LastName,
-                DepartmentNumber = existing.DepartmentNumber,
-                Active = status.Value.Active,
-                Type = existing.Type,
-                UnrestrictedUsage = existing.UnrestrictedUsage
-            };
+                var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
+                return employees.Select(ToDto).ToList();
+            });
 
-            Validate(input);
-            var result = await _client.AddOrUpdateEmployeesAsync(new[] { input }).ConfigureAwait(false);
-            return ToResponse(result, employeeNumber);
-        });
-
-        private Aff<EmployeesResponse> Upsert(EmployeeOutDto employee) => LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
-        {
-            var input = new EmployeeInput
+        public Aff<EmployeeInDto> TryGetEmployee(NotEmptyString employeeId) =>
+            LanguageExtAffExtensions.Aff<EmployeeInDto>(async () =>
             {
-                Number = employee.EmployeeNumber,
-                Pin = employee.Pin,
-                FirstName = employee.FirstName,
-                LastName = employee.LastName,
-                DepartmentNumber = employee.Department,
-                Active = employee.Active
-            };
+                var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
+                var found = employees.FirstOrDefault(x =>
+                    string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
+                // Preserve the existing REST compatibility contract until EmployeeManager is migrated.
+                return found == null ? new EmployeeInDto() : ToDto(found);
+            });
 
-            Validate(input);
-            var result = await _client.AddOrUpdateEmployeesAsync(new[] { input }).ConfigureAwait(false);
-            return ToResponse(result, employee.EmployeeNumber);
-        });
+        public Aff<Option<EmployeeInDto>> TryGetEmployeeOptional(NotEmptyString employeeId) =>
+            LanguageExtAffExtensions.Aff<Option<EmployeeInDto>>(async () =>
+            {
+                var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
+                var found = employees.FirstOrDefault(x =>
+                    string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
+                return found == null ? Option<EmployeeInDto>.None : (Option<EmployeeInDto>)ToDto(found);
+            });
+
+        public Aff<EmployeesResponse> TryCreateEmployee(NotNull<EmployeeOutDto> employee) => Synchronize(employee.Value);
+
+        public Aff<EmployeesResponse> TryUpdateEmployee(NotNull<EmployeeOutDto> employee) => Synchronize(employee.Value);
+
+        public Aff<EmployeesResponse> TryUpdateEmployeeStatus(NotNull<EmployeeStatusOutDto> status) =>
+            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
+            {
+                var result = await _synchronization.ChangeActivationAsync(
+                    new EmployeeNumber(status.Value.EmployeeNumber),
+                    status.Value.Active).ConfigureAwait(false);
+
+                return ToResponse(result);
+            });
+
+        private Aff<EmployeesResponse> Synchronize(EmployeeOutDto source) =>
+            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
+            {
+                var employee = ToDomain(source);
+                var result = await _synchronization.SynchronizeAsync(employee).ConfigureAwait(false);
+                return ToResponse(result);
+            });
+
+        private static PtiEmployee ToDomain(EmployeeOutDto source)
+        {
+            // Existing REST DTOs stay in this inbound anti-corruption adapter.
+            if (source == null || string.IsNullOrWhiteSpace(source.EmployeeNumber) ||
+                string.IsNullOrWhiteSpace(source.Pin) || string.IsNullOrWhiteSpace(source.FirstName) ||
+                string.IsNullOrWhiteSpace(source.LastName) || string.IsNullOrWhiteSpace(source.Department))
+                throw new InvalidOperationException("Cannot send employee to PTI GraphQL: a required field is missing.");
+
+            return new PtiEmployee(
+                new EmployeeNumber(source.EmployeeNumber),
+                new EmployeePin(source.Pin),
+                source.FirstName,
+                source.LastName,
+                source.Department,
+                source.Active);
+        }
 
         private static EmployeeInDto ToDto(Employee source) => new EmployeeInDto
         {
@@ -98,31 +102,33 @@ namespace LGC.PTI.HTTPClient.GraphQL
             Active = source.Active
         };
 
-        private static void Validate(EmployeeInput input)
+        private static EmployeeInDto ToDto(PtiEmployeeSnapshot source) => new EmployeeInDto
         {
-            if (string.IsNullOrWhiteSpace(input.Number) || string.IsNullOrWhiteSpace(input.Pin) ||
-                string.IsNullOrWhiteSpace(input.FirstName) || string.IsNullOrWhiteSpace(input.LastName) ||
-                string.IsNullOrWhiteSpace(input.DepartmentNumber))
-                throw new InvalidOperationException("Cannot send employee to PTI GraphQL: a required field is missing.");
-        }
+            EmployeeNumber = source.Number,
+            FirstName = source.FirstName,
+            LastName = source.LastName,
+            Department = source.DepartmentNumber,
+            Active = source.Active
+        };
 
-        private static EmployeesResponse ToResponse(IReadOnlyList<Employee> employees, string requestedNumber)
+        private static EmployeesResponse ToResponse(EmployeeSyncOutcome outcome)
         {
-            if (employees == null || employees.Count != 1) throw new InvalidOperationException("PTI GraphQL upsert did not return exactly one employee.");
-            var employee = employees[0];
-            if (employee == null || employee.Deleted || !string.Equals(employee.Number, requestedNumber, StringComparison.OrdinalIgnoreCase) ||
-                !string.IsNullOrWhiteSpace(employee.Error) || (employee.Status != "new" && employee.Status != "updated"))
-                throw new InvalidOperationException("PTI GraphQL returned an invalid employee upsert result.");
-
             return new EmployeesResponse
             {
                 IsSuccess = true,
                 Errors = new List<string>(),
-                OperationStatus = employee.Status,
+                OperationStatus = outcome.Change == EmployeeChangeKind.Created ? "new" : "updated",
                 Result = new LGC.PTI.Common.Application.Dtos.Result
                 {
-                    Items = new List<EmployeeInDto> { ToDto(employee) },
-                    MetaData = new MetaData { HasNextPage = false, PageCount = 1, PageNumber = 1, PageSize = 1, TotalItemCount = 1 }
+                    Items = new List<EmployeeInDto> { ToDto(outcome.Employee) },
+                    MetaData = new MetaData
+                    {
+                        HasNextPage = false,
+                        PageCount = 1,
+                        PageNumber = 1,
+                        PageSize = 1,
+                        TotalItemCount = 1
+                    }
                 }
             };
         }
