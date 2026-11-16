@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GraphQL;
+using GraphQL.Client.Abstractions;
+using GraphQL.Client.Http;
+using GraphQL.Client.Serializer.Newtonsoft;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace LGC.PTI.GraphQL.Transport
 {
@@ -38,12 +42,14 @@ namespace LGC.PTI.GraphQL.Transport
         [JsonProperty("error")] public string Error { get; set; }
     }
 
-    /// <summary>Standalone GraphQL transport. Does not reference the legacy GraphQL project or the REST adapter.</summary>
+    /// <summary>Typed GraphQL transport. Authentication remains PTI-specific; GraphQL parsing is handled by NuGet.</summary>
     public sealed class PtiGraphQLClient : IPtiGraphQLClient
     {
         private const string EmployeeFields = "number pin firstName lastName departmentNumber active deleted type unrestrictedUsage status error";
         private const string LoginMutation = "mutation Login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }";
-        private readonly HttpClient _http;
+        private const string EmployeesQuery = "query GetEmployees { getEmployees { " + EmployeeFields + " } }";
+        private const string UpsertMutation = "mutation UpsertEmployees($employees: [EmployeeInput]) { addOrUpdateEmployees(employees: $employees) { " + EmployeeFields + " } }";
+        private readonly GraphQLHttpClient _graphql;
         private readonly string _email;
         private readonly string _password;
         private readonly SemaphoreSlim _loginLock = new SemaphoreSlim(1, 1);
@@ -53,55 +59,92 @@ namespace LGC.PTI.GraphQL.Transport
 
         public PtiGraphQLClient(HttpClient httpClient, string email, string password, Func<DateTimeOffset> utcNow = null)
         {
-            _http = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            if (httpClient == null) throw new ArgumentNullException(nameof(httpClient));
+            if (httpClient.BaseAddress == null) throw new ArgumentException("HttpClient.BaseAddress must point to the GraphQL endpoint.", nameof(httpClient));
             if (string.IsNullOrWhiteSpace(email)) throw new ArgumentException("Email is required.", nameof(email));
             if (string.IsNullOrWhiteSpace(password)) throw new ArgumentException("Password is required.", nameof(password));
-            if (_http.BaseAddress == null) throw new ArgumentException("HttpClient.BaseAddress must point to the GraphQL endpoint.", nameof(httpClient));
+
             _email = email;
             _password = password;
             _clock = utcNow ?? (() => DateTimeOffset.UtcNow);
+            var options = new GraphQLHttpClientOptions
+            {
+                EndPoint = httpClient.BaseAddress,
+                IsValidResponseToDeserialize = response => GraphQLHttpClientOptions.DefaultIsValidResponseToDeserialize(response) ||
+                    (response.StatusCode == HttpStatusCode.Unauthorized && IsJsonResponse(response))
+            };
+            _graphql = new GraphQLHttpClient(options, new NewtonsoftJsonSerializer(), httpClient);
         }
 
-        public Task<IReadOnlyList<Employee>> GetEmployeesAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Employee>> GetEmployeesAsync(CancellationToken cancellationToken = default)
         {
-            return ExecuteEmployeesAsync("query GetEmployees { getEmployees { " + EmployeeFields + " } }", null, "getEmployees", cancellationToken);
+            var response = await ExecuteAsync<EmployeesResult>(EmployeesQuery, null, false, cancellationToken).ConfigureAwait(false);
+            return ValidateEmployees(response.Data?.GetEmployees, "getEmployees");
         }
 
-        public Task<IReadOnlyList<Employee>> AddOrUpdateEmployeesAsync(IReadOnlyCollection<EmployeeInput> employees, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Employee>> AddOrUpdateEmployeesAsync(IReadOnlyCollection<EmployeeInput> employees, CancellationToken cancellationToken = default)
         {
             if (employees == null || employees.Count == 0) throw new ArgumentException("At least one employee is required.", nameof(employees));
-            foreach (var employee in employees)
-            {
-                if (employee == null || string.IsNullOrWhiteSpace(employee.Number) || string.IsNullOrWhiteSpace(employee.Pin) ||
-                    string.IsNullOrWhiteSpace(employee.FirstName) || string.IsNullOrWhiteSpace(employee.LastName) ||
-                    string.IsNullOrWhiteSpace(employee.DepartmentNumber))
-                    throw new ArgumentException("GraphQL requires number, pin, firstName, lastName, and departmentNumber.", nameof(employees));
-            }
+            if (employees.Any(employee => employee == null || string.IsNullOrWhiteSpace(employee.Number) ||
+                string.IsNullOrWhiteSpace(employee.Pin) || string.IsNullOrWhiteSpace(employee.FirstName) ||
+                string.IsNullOrWhiteSpace(employee.LastName) || string.IsNullOrWhiteSpace(employee.DepartmentNumber)))
+                throw new ArgumentException("GraphQL requires number, pin, firstName, lastName, and departmentNumber.", nameof(employees));
 
-            const string mutation = "mutation UpsertEmployees($employees: [EmployeeInput]) { addOrUpdateEmployees(employees: $employees) { " + EmployeeFields + " } }";
-            return ExecuteEmployeesAsync(mutation, new { employees }, "addOrUpdateEmployees", cancellationToken);
+            var response = await ExecuteAsync<UpsertResult>(UpsertMutation, new { employees }, true, cancellationToken).ConfigureAwait(false);
+            return ValidateEmployees(response.Data?.AddOrUpdateEmployees, "addOrUpdateEmployees");
         }
 
-        private async Task<IReadOnlyList<Employee>> ExecuteEmployeesAsync(string query, object variables, string field, CancellationToken ct)
+        private async Task<GraphQLResponse<T>> ExecuteAsync<T>(string query, object variables, bool isMutation, CancellationToken ct)
         {
             var token = await GetTokenAsync(ct).ConfigureAwait(false);
-            JObject response = await SendAsync(query, variables, token, ct).ConfigureAwait(false);
-            if (IsAuthenticationError(response))
+
+            for (var attempt = 0; attempt < 2; attempt++)
             {
-                await InvalidateTokenAsync(token, ct).ConfigureAwait(false);
-                token = await GetTokenAsync(ct).ConfigureAwait(false);
-                response = await SendAsync(query, variables, token, ct).ConfigureAwait(false);
+                GraphQLResponse<T> response;
+                try
+                {
+                    response = await SendAsync<T>(query, variables, token, isMutation, ct).ConfigureAwait(false);
+                }
+                catch (GraphQLRequestException ex) when (attempt == 0 && ex.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    await InvalidateTokenAsync(token, ct).ConfigureAwait(false);
+                    token = await GetTokenAsync(ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (attempt == 0 && IsAuthenticationError(response))
+                {
+                    await InvalidateTokenAsync(token, ct).ConfigureAwait(false);
+                    token = await GetTokenAsync(ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                ThrowGraphQLErrors(response);
+                return response;
             }
 
-            ThrowGraphQLErrors(response);
-            var data = response["data"] as JObject;
-            var node = data?[field];
-            if (!(node is JArray employees)) throw new GraphQLRequestException("GraphQL response did not contain a valid " + field + " array.");
-            var parsed = employees.ToObject<List<Employee>>();
-            if (parsed == null || parsed.Any(x => x == null || !string.IsNullOrWhiteSpace(x.Error) ||
-                (!string.IsNullOrEmpty(x.Status) && x.Status != "new" && x.Status != "updated")))
-                throw new GraphQLRequestException("PTI returned an employee with an error or unrecognized status.");
-            return parsed;
+            throw new GraphQLRequestException("PTI GraphQL authentication retry exhausted.");
+        }
+
+        private async Task<GraphQLResponse<T>> SendAsync<T>(string query, object variables, string token, bool isMutation, CancellationToken ct)
+        {
+            GraphQLRequest request = new GraphQLRequest { Query = query, Variables = variables };
+            if (!string.IsNullOrEmpty(token)) request = new AuthorizedGraphQLRequest(request, token);
+
+            try
+            {
+                return isMutation
+                    ? await _graphql.SendMutationAsync<T>(request, ct).ConfigureAwait(false)
+                    : await _graphql.SendQueryAsync<T>(request, ct).ConfigureAwait(false);
+            }
+            catch (GraphQLHttpRequestException ex)
+            {
+                throw new GraphQLRequestException("PTI HTTP error: " + (int)ex.StatusCode, ex.StatusCode);
+            }
+            catch (JsonException ex)
+            {
+                throw new GraphQLRequestException("PTI returned an invalid JSON response.", ex);
+            }
         }
 
         private async Task<string> GetTokenAsync(CancellationToken ct)
@@ -111,15 +154,19 @@ namespace LGC.PTI.GraphQL.Transport
             try
             {
                 if (TokenIsValid()) return _token;
-                var result = await SendAsync(LoginMutation, new { email = _email, password = _password }, null, ct).ConfigureAwait(false);
+
+                var result = await SendAsync<LoginResult>(LoginMutation, new { email = _email, password = _password }, null, true, ct).ConfigureAwait(false);
                 ThrowGraphQLErrors(result);
-                var token = (string)result["data"]?["login"]?["token"];
+
+                var token = result.Data?.Login?.Token;
                 if (string.IsNullOrWhiteSpace(token)) throw new GraphQLRequestException("GraphQL login did not return a token.");
-                var expiry = ReadJwtExpiry(token);
-                if (expiry <= _clock()) throw new GraphQLRequestException("GraphQL login returned an expired JWT.");
+
+                var expiresAt = ReadJwtExpiry(token);
+                if (expiresAt <= _clock()) throw new GraphQLRequestException("GraphQL login returned an expired JWT.");
+
                 _token = token;
-                _expiresAt = expiry;
-                return _token;
+                _expiresAt = expiresAt;
+                return token;
             }
             finally { _loginLock.Release(); }
         }
@@ -133,62 +180,82 @@ namespace LGC.PTI.GraphQL.Transport
             finally { _loginLock.Release(); }
         }
 
-        private async Task<JObject> SendAsync(string query, object variables, string token, CancellationToken ct)
+        private static IReadOnlyList<Employee> ValidateEmployees(List<Employee> employees, string field)
         {
-            var json = JsonConvert.SerializeObject(new { query, variables });
-            using (var request = new HttpRequestMessage(HttpMethod.Post, _http.BaseAddress))
-            using (var body = new StringContent(json, Encoding.UTF8, "application/json"))
-            {
-                request.Content = body;
-                if (!string.IsNullOrEmpty(token)) request.Headers.TryAddWithoutValidation("Authorization", token);
-                using (var response = await _http.SendAsync(request, ct).ConfigureAwait(false))
-                {
-                    var responseText = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    JObject document;
-                    try { document = JObject.Parse(responseText); }
-                    catch (JsonException e) { throw new GraphQLRequestException("PTI returned an invalid JSON response.", e); }
-                    if (!response.IsSuccessStatusCode && !IsAuthenticationError(document))
-                        throw new GraphQLRequestException("PTI HTTP error: " + (int)response.StatusCode, response.StatusCode);
-                    return document;
-                }
-            }
+            if (employees == null) throw new GraphQLRequestException("GraphQL response did not contain a valid " + field + " array.");
+            if (employees.Any(employee => employee == null || !string.IsNullOrWhiteSpace(employee.Error) ||
+                (!string.IsNullOrEmpty(employee.Status) && employee.Status != "new" && employee.Status != "updated")))
+                throw new GraphQLRequestException("PTI returned an employee with an error or unrecognized status.");
+            return employees;
         }
 
-        private static bool IsAuthenticationError(JObject response)
+        private static bool IsJsonResponse(HttpResponseMessage response)
         {
-            var errors = response["errors"] as JArray;
-            return errors != null && errors.Any(error =>
-            {
-                var message = (string)error["message"] ?? "";
-                return message.IndexOf("Invalid authentication token", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                       message.IndexOf("Firebase ID token", StringComparison.OrdinalIgnoreCase) >= 0;
-            });
+            var mediaType = response.Content?.Headers.ContentType?.MediaType;
+            return mediaType == "application/json" || mediaType == "application/graphql-response+json" || mediaType == "application/graphql+json";
         }
 
-        private static void ThrowGraphQLErrors(JObject response)
+        private static bool IsAuthenticationError<T>(GraphQLResponse<T> response)
         {
-            var errors = response["errors"] as JArray;
-            if (errors != null && errors.Count > 0)
-                throw new GraphQLRequestException("PTI GraphQL error: " + string.Join("; ", errors.Select(e => (string)e["message"] ?? "Unknown error")));
+            if (response is IGraphQLHttpResponse http && http.StatusCode == HttpStatusCode.Unauthorized) return true;
+            return response?.Errors?.Any(error =>
+                (error?.Message ?? "").IndexOf("Invalid authentication token", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                (error?.Message ?? "").IndexOf("Firebase ID token", StringComparison.OrdinalIgnoreCase) >= 0) == true;
+        }
+
+        private static void ThrowGraphQLErrors<T>(GraphQLResponse<T> response)
+        {
+            if (response == null) throw new GraphQLRequestException("PTI returned an empty GraphQL response.");
+            if (response.Errors?.Length > 0)
+                throw new GraphQLRequestException("PTI GraphQL error: " + string.Join("; ", response.Errors.Select(e => e?.Message ?? "Unknown error")));
         }
 
         private static DateTimeOffset ReadJwtExpiry(string token)
         {
             try
             {
-                var parts = token.Split('.');
-                if (parts.Length != 3) throw new FormatException();
-                var payload = parts[1].Replace('-', '+').Replace('_', '/');
-                payload = payload.PadRight((payload.Length + 3) / 4 * 4, '=');
-                var claims = JObject.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(payload)));
-                var unixSeconds = (long?)claims["exp"];
-                if (unixSeconds == null) throw new FormatException();
-                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds.Value);
+                var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+                if (jwt.ValidTo == DateTime.MinValue) throw new FormatException("JWT does not contain exp.");
+                return new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero);
             }
-            catch (Exception e) when (e is FormatException || e is JsonException || e is ArgumentOutOfRangeException)
+            catch (Exception ex) when (ex is SecurityTokenException || ex is ArgumentException || ex is FormatException)
             {
-                throw new GraphQLRequestException("GraphQL login returned a JWT without a valid expiration.", e);
+                throw new GraphQLRequestException("GraphQL login returned a JWT without a valid expiration.", ex);
             }
+        }
+
+        private sealed class AuthorizedGraphQLRequest : GraphQLHttpRequest
+        {
+            private readonly string _jwt;
+
+            public AuthorizedGraphQLRequest(GraphQLRequest request, string jwt) : base(request) => _jwt = jwt;
+
+            public override HttpRequestMessage ToHttpRequestMessage(GraphQLHttpClientOptions options, IGraphQLJsonSerializer serializer)
+            {
+                var request = base.ToHttpRequestMessage(options, serializer);
+                request.Headers.TryAddWithoutValidation("Authorization", _jwt); // PTI expects the raw Firebase ID token.
+                return request;
+            }
+        }
+
+        private sealed class LoginResult
+        {
+            [JsonProperty("login")] public LoginToken Login { get; set; }
+        }
+
+        private sealed class LoginToken
+        {
+            [JsonProperty("token")] public string Token { get; set; }
+        }
+
+        private sealed class EmployeesResult
+        {
+            [JsonProperty("getEmployees")] public List<Employee> GetEmployees { get; set; }
+        }
+
+        private sealed class UpsertResult
+        {
+            [JsonProperty("addOrUpdateEmployees")] public List<Employee> AddOrUpdateEmployees { get; set; }
         }
     }
 }
