@@ -45,6 +45,32 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             }
         }
 
+        // Tests execute the real LanguageExt Aff and inspect its Fin result.
+        // We do not pretend that a failed effect throws from RunAsync.
+        private static async Task<T> ExpectSuccessAsync<T>(Aff<T> effect)
+        {
+            var fin = await effect.Run().ConfigureAwait(false);
+            Assert.That(fin.IsSucc, Is.True, $"Expected Fin.Success, got {fin}");
+            return fin.IfFail(default(T));
+        }
+
+        private static async Task ExpectFailureAsync<T>(Aff<T> effect)
+        {
+            var fin = await effect.Run().ConfigureAwait(false);
+            Assert.That(fin.IsFail, Is.True, $"Expected Fin.Fail, got {fin}");
+        }
+
+        [Test]
+        public async Task RealAff_ArgumentNullExceptionInsideEffectBecomesFinFail()
+        {
+            var effect = Prelude.Aff(() =>
+                new ValueTask<int>(Task.FromException<int>(new ArgumentNullException("employee"))));
+
+            var fin = await effect.Run().ConfigureAwait(false);
+
+            Assert.That(fin.IsFail, Is.True);
+        }
+
         private static EmployeeOutDto OutEmployee(string pin = "00123") => new EmployeeOutDto
         {
             EmployeeNumber = "99990001", Pin = pin, Badge = "7281-00123", Language = Language.French,
@@ -61,7 +87,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         public async Task Create_UsesUpsertWithPinAndReturnsNewStatus()
         {
             var fake = new FakeClient();
-            var result = await new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee()).RunAsync();
+            var result = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee()));
             Assert.True(result.IsSuccess);
             Assert.AreEqual("new", result.OperationStatus);
             Assert.AreEqual("00123", fake.LastInput.Pin);
@@ -74,7 +100,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         public async Task Update_DoesNotReadEmployeesFirst()
         {
             var fake = new FakeClient { OnUpsert = e => new[] { new Employee { Number = e.Number, Status = "updated" } } };
-            var result = await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployee(OutEmployee()).RunAsync();
+            var result = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployee(OutEmployee()));
             Assert.AreEqual("updated", result.OperationStatus);
             Assert.AreEqual(0, fake.Reads);
             Assert.AreEqual(1, fake.Writes);
@@ -84,7 +110,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         public async Task GetEmployees_MapsNumberDepartmentAndActive()
         {
             var fake = new FakeClient { Employees = new[] { ServerEmployee() } };
-            var result = await new GraphQLEmployeeApiSrv(fake).TryGetEmployees().RunAsync();
+            var result = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryGetEmployees());
             Assert.AreEqual("99990001", result.Single().EmployeeNumber);
             Assert.AreEqual("pti", result.Single().Department);
             Assert.True(result.Single().Active);
@@ -95,16 +121,16 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         {
             var fake = new FakeClient { Employees = new[] { ServerEmployee() } };
             var service = new GraphQLEmployeeApiSrv(fake);
-            Assert.AreEqual("99990001", (await service.TryGetEmployee("99990001").RunAsync()).EmployeeNumber);
-            Assert.IsNull((await service.TryGetEmployee("missing").RunAsync()).EmployeeNumber);
-            Assert.False((await service.TryGetEmployeeOptional("missing").RunAsync()).IsSome);
+            Assert.AreEqual("99990001", (await ExpectSuccessAsync(service.TryGetEmployee("99990001"))).EmployeeNumber);
+            Assert.IsNull((await ExpectSuccessAsync(service.TryGetEmployee("missing"))).EmployeeNumber);
+            Assert.False((await ExpectSuccessAsync(service.TryGetEmployeeOptional("missing"))).IsSome);
         }
 
         [Test]
         public async Task Deactivate_UsesExistingFullRecordAndPreservesOptionalFlags()
         {
             var fake = new FakeClient { Employees = new[] { ServerEmployee() } };
-            var result = await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")).RunAsync();
+            var result = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")));
             Assert.True(result.IsSuccess);
             Assert.False(fake.LastInput.Active);
             Assert.AreEqual("00123", fake.LastInput.Pin);
@@ -117,60 +143,54 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
-        public void Deactivate_AmbiguousNumberFailsWithoutWriting()
+        public async Task Deactivate_AmbiguousNumberFailsWithoutWriting()
         {
             var employee = ServerEmployee();
             var fake = new FakeClient { Employees = new[] { employee, ServerEmployee() } };
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")));
             Assert.AreEqual(0, fake.Writes);
         }
 
         [Test]
-        public void Deactivate_DeletedOnlyRecordFailsWithoutWriting()
+        public async Task Deactivate_DeletedOnlyRecordFailsWithoutWriting()
         {
             var employee = ServerEmployee();
             employee.Deleted = true;
             var fake = new FakeClient { Employees = new[] { employee } };
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")));
             Assert.AreEqual(0, fake.Writes);
         }
 
         [Test]
-        public void Deactivate_MissingRequiredPinFailsWithoutWriting()
+        public async Task Deactivate_MissingRequiredPinFailsWithoutWriting()
         {
             var employee = ServerEmployee();
             employee.Pin = null;
             var fake = new FakeClient { Employees = new[] { employee } };
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")));
             Assert.AreEqual(0, fake.Writes);
         }
 
         [Test]
-        public void Upsert_MissingPinFailsBeforeCallingGraphQL()
+        public async Task Upsert_MissingPinFailsBeforeCallingGraphQL()
         {
             var fake = new FakeClient();
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee(null)).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee(null)));
             Assert.AreEqual(0, fake.Writes);
         }
 
         [Test]
-        public void Upsert_WrongResponseNumberFails()
+        public async Task Upsert_WrongResponseNumberFails()
         {
             var fake = new FakeClient { OnUpsert = _ => new[] { new Employee { Number = "another", Status = "updated" } } };
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryUpdateEmployee(OutEmployee()).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployee(OutEmployee()));
         }
 
         [Test]
-        public void Upsert_EmptyResponseFails()
+        public async Task Upsert_EmptyResponseFails()
         {
             var fake = new FakeClient { OnUpsert = _ => Array.Empty<Employee>() };
-            Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee()).RunAsync());
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake).TryCreateEmployee(OutEmployee()));
         }
 
         [Test]
