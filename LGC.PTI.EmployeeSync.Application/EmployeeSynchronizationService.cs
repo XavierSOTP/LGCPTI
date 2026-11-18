@@ -1,52 +1,69 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
+using LanguageExt;
+using LanguageExt.Common;
 using LGC.PTI.EmployeeSync.Domain;
 
 namespace LGC.PTI.EmployeeSync.Application
 {
-    /// <summary>Application use cases: synchronize employee and change activation.</summary>
+    /// <summary>Monadic use cases: expected validation failures short-circuit as Fin.Fail.</summary>
     public sealed class EmployeeSynchronizationService
     {
         private readonly IPtiEmployeeGateway _gateway;
 
-        public EmployeeSynchronizationService(IPtiEmployeeGateway gateway)
-        {
-            _gateway = gateway ?? throw new ArgumentNullException(nameof(gateway));
-        }
+        public EmployeeSynchronizationService(IPtiEmployeeGateway gateway) => _gateway = gateway;
 
-        /// <summary>Upsert without a preliminary GET; the PTI gateway reports created/updated.</summary>
-        public Task<EmployeeSyncOutcome> SynchronizeAsync(
+        /// <summary>Upsert directly, without reading all employees first.</summary>
+        public Aff<EmployeeSyncOutcome> SynchronizeAsync(
             PtiEmployee employee, CancellationToken cancellationToken = default)
         {
-            if (employee == null) throw new ArgumentNullException(nameof(employee));
+            if (_gateway == null)
+                return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("PTI gateway is not configured."));
+            if (employee == null)
+                return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("Employee is required."));
+
             return _gateway.SaveAsync(employee, cancellationToken);
         }
 
         /// <summary>
-        /// Only one non-deleted record may be changed. Preserve all mandatory and optional fields.
-        /// Never invoke deleteEmployees.
+        /// Only an unambiguous, complete, non-deleted remote record may be activated/deactivated.
+        /// Does not delete PTI employees or throw for expected validation failures.
         /// </summary>
-        public async Task<EmployeeSyncOutcome> ChangeActivationAsync(
+        public Aff<EmployeeSyncOutcome> ChangeActivationAsync(
             EmployeeNumber number, bool active, CancellationToken cancellationToken = default)
         {
-            if (number == null) throw new ArgumentNullException(nameof(number));
+            if (_gateway == null)
+                return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("PTI gateway is not configured."));
+            if (number == null)
+                return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("Employee number is required."));
 
-            var employees = await _gateway.GetEmployeesAsync(cancellationToken).ConfigureAwait(false);
-            if (employees == null) throw new InvalidOperationException("PTI did not return employee records.");
+            return from employees in _gateway.GetEmployeesAsync(cancellationToken)
+                   from result in ValidateAndSave(employees, number, active, cancellationToken)
+                   select result;
+        }
+
+        private Aff<EmployeeSyncOutcome> ValidateAndSave(
+            IReadOnlyList<PtiEmployeeSnapshot> employees,
+            EmployeeNumber number, bool active, CancellationToken ct)
+        {
+            if (employees == null)
+                return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("PTI did not return employee records."));
 
             var matches = employees
                 .Where(employee => employee != null && !employee.Deleted &&
                     string.Equals(employee.Number, number.Value, StringComparison.OrdinalIgnoreCase))
+                .Take(2)
                 .ToList();
 
             if (matches.Count != 1)
-                throw new InvalidOperationException(
-                    $"Cannot safely update PTI employee status for {number.Value}: found {matches.Count} non-deleted matches.");
+                return Prelude.FailAff<EmployeeSyncOutcome>(
+                    Error.New($"Cannot safely update PTI employee status for {number.Value}: found {matches.Count} matching records."));
 
-            var updatedEmployee = matches[0].ToEmployee().WithActive(active);
-            return await _gateway.SaveAsync(updatedEmployee, cancellationToken).ConfigureAwait(false);
+            return matches[0].ToEmployee().Match(
+                Fail: error => Prelude.FailAff<EmployeeSyncOutcome>(error),
+                Succ: employee => _gateway.SaveAsync(employee.WithActive(active), ct));
         }
     }
 }
