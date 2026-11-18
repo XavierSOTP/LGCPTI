@@ -1,18 +1,21 @@
 using System;
+using LanguageExt;
+using LanguageExt.Common;
 
 namespace LGC.PTI.EmployeeSync.Domain
 {
-    /// <summary>Immutable PIN value object; keeps the original text (e.g. "00123").</summary>
+    /// <summary>Immutable PIN value object; preserves leading zeroes.</summary>
     public sealed class EmployeePin : IEquatable<EmployeePin>
     {
         public string Value { get; }
 
-        public EmployeePin(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentException("Employee PIN is required.", nameof(value));
-            Value = value;
-        }
+        private EmployeePin(string value) => Value = value;
+
+        /// <summary>Missing PINs return Fin.Fail without exposing sensitive content.</summary>
+        public static Fin<EmployeePin> Create(string value) =>
+            string.IsNullOrWhiteSpace(value)
+                ? Prelude.FinFail<EmployeePin>(Error.New("Employee PIN is required."))
+                : Prelude.FinSucc(new EmployeePin(value));
 
         public bool Equals(EmployeePin other) =>
             other != null && string.Equals(Value, other.Value, StringComparison.Ordinal);
@@ -21,7 +24,6 @@ namespace LGC.PTI.EmployeeSync.Domain
 
         public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
 
-        // Do not expose the PIN in exception messages or ordinary logs.
         public override string ToString() => "[REDACTED]";
     }
 }
