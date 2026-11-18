@@ -1,4 +1,5 @@
 using LanguageExt;
+using LanguageExt.Common;
 using LGC.PTI.Common.Application.Dtos;
 using LGC.PTI.Common.Infrastructure.ExternalApi.Dtos;
 using LGC.PTI.EmployeeSync.Application;
@@ -24,73 +25,80 @@ namespace LGC.PTI.HTTPClient.GraphQL
 
         public GraphQLEmployeeApiSrv(IPtiGraphQLClient client)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _client = client;
             _synchronization = new EmployeeSynchronizationService(new GraphQLEmployeeGateway(client));
         }
 
-        public Aff<IReadOnlyCollection<EmployeeInDto>> TryGetEmployees() =>
-            LanguageExtAffExtensions.Aff<IReadOnlyCollection<EmployeeInDto>>(async () =>
+        public Aff<IReadOnlyCollection<EmployeeInDto>> TryGetEmployees()
+        {
+            if (_client == null)
+                return Prelude.FailAff<IReadOnlyCollection<EmployeeInDto>>(Error.New("GraphQL client is not configured."));
+
+            return LanguageExtAffExtensions.Aff<IReadOnlyCollection<EmployeeInDto>>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 return employees.Select(ToDto).ToList();
             });
+        }
 
-        public Aff<EmployeeInDto> TryGetEmployee(NotEmptyString employeeId) =>
-            LanguageExtAffExtensions.Aff<EmployeeInDto>(async () =>
+        public Aff<EmployeeInDto> TryGetEmployee(NotEmptyString employeeId)
+        {
+            if (_client == null)
+                return Prelude.FailAff<EmployeeInDto>(Error.New("GraphQL client is not configured."));
+
+            return LanguageExtAffExtensions.Aff<EmployeeInDto>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 var found = employees.FirstOrDefault(x =>
                     string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
-                // Preserve the existing REST compatibility contract until EmployeeManager is migrated.
+                // Preserve the legacy contract until EmployeeManager is migrated.
                 return found == null ? new EmployeeInDto() : ToDto(found);
             });
+        }
 
-        public Aff<Option<EmployeeInDto>> TryGetEmployeeOptional(NotEmptyString employeeId) =>
-            LanguageExtAffExtensions.Aff<Option<EmployeeInDto>>(async () =>
+        public Aff<Option<EmployeeInDto>> TryGetEmployeeOptional(NotEmptyString employeeId)
+        {
+            if (_client == null)
+                return Prelude.FailAff<Option<EmployeeInDto>>(Error.New("GraphQL client is not configured."));
+
+            return LanguageExtAffExtensions.Aff<Option<EmployeeInDto>>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 var found = employees.FirstOrDefault(x =>
                     string.Equals(x.Number, employeeId, StringComparison.OrdinalIgnoreCase));
                 return found == null ? Option<EmployeeInDto>.None : (Option<EmployeeInDto>)ToDto(found);
             });
+        }
 
         public Aff<EmployeesResponse> TryCreateEmployee(NotNull<EmployeeOutDto> employee) => Synchronize(employee.Value);
 
         public Aff<EmployeesResponse> TryUpdateEmployee(NotNull<EmployeeOutDto> employee) => Synchronize(employee.Value);
 
-        public Aff<EmployeesResponse> TryUpdateEmployeeStatus(NotNull<EmployeeStatusOutDto> status) =>
-            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
-            {
-                var result = await _synchronization.ChangeActivationAsync(
-                    new EmployeeNumber(status.Value.EmployeeNumber),
-                    status.Value.Active).ConfigureAwait(false);
+        public Aff<EmployeesResponse> TryUpdateEmployeeStatus(NotNull<EmployeeStatusOutDto> status)
+        {
+            if (status.Value == null)
+                return Prelude.FailAff<EmployeesResponse>(Error.New("Employee status is required."));
 
-                return ToResponse(result);
-            });
+            return EmployeeNumber.Create(status.Value.EmployeeNumber).Match(
+                Fail: error => Prelude.FailAff<EmployeesResponse>(error),
+                Succ: number => _synchronization.ChangeActivationAsync(number, status.Value.Active)
+                    .Map(ToResponse));
+        }
 
         private Aff<EmployeesResponse> Synchronize(EmployeeOutDto source) =>
-            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
-            {
-                var employee = ToDomain(source);
-                var result = await _synchronization.SynchronizeAsync(employee).ConfigureAwait(false);
-                return ToResponse(result);
-            });
+            ToDomain(source).Match(
+                Fail: error => Prelude.FailAff<EmployeesResponse>(error),
+                Succ: employee => _synchronization.SynchronizeAsync(employee).Map(ToResponse));
 
-        private static PtiEmployee ToDomain(EmployeeOutDto source)
+        private static Fin<PtiEmployee> ToDomain(EmployeeOutDto source)
         {
-            // Existing REST DTOs stay in this inbound anti-corruption adapter.
-            if (source == null || string.IsNullOrWhiteSpace(source.EmployeeNumber) ||
-                string.IsNullOrWhiteSpace(source.Pin) || string.IsNullOrWhiteSpace(source.FirstName) ||
-                string.IsNullOrWhiteSpace(source.LastName) || string.IsNullOrWhiteSpace(source.Department))
-                throw new InvalidOperationException("Cannot send employee to PTI GraphQL: a required field is missing.");
+            if (source == null)
+                return Prelude.FinFail<PtiEmployee>(Error.New("Employee is required."));
 
-            return new PtiEmployee(
-                new EmployeeNumber(source.EmployeeNumber),
-                new EmployeePin(source.Pin),
-                source.FirstName,
-                source.LastName,
-                source.Department,
-                source.Active);
+            // Legacy REST DTOs are converted to validated domain values at this boundary.
+            return PtiEmployee.Create(
+                source.EmployeeNumber, source.Pin, source.FirstName,
+                source.LastName, source.Department, source.Active);
         }
 
         private static EmployeeInDto ToDto(Employee source) => new EmployeeInDto
