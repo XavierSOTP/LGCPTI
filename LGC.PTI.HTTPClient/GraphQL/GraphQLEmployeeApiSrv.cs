@@ -6,7 +6,6 @@ using LGC.PTI.EmployeeSync.Domain;
 using LGC.PTI.GraphQL.Transport;
 using LGC.PTI.HTTPClient.Refit.Employees;
 using SoftSolute.Common.Utilities;
-using SoftSolute.Utiities.Plugin.Adapters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,14 +29,14 @@ namespace LGC.PTI.HTTPClient.GraphQL
         }
 
         public Aff<IReadOnlyCollection<EmployeeInDto>> TryGetEmployees() =>
-            LanguageExtAffExtensions.Aff<IReadOnlyCollection<EmployeeInDto>>(async () =>
+            AsAff<IReadOnlyCollection<EmployeeInDto>>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 return employees.Select(ToDto).ToList();
             });
 
         public Aff<EmployeeInDto> TryGetEmployee(NotEmptyString employeeId) =>
-            LanguageExtAffExtensions.Aff<EmployeeInDto>(async () =>
+            AsAff<EmployeeInDto>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 var found = employees.FirstOrDefault(x =>
@@ -47,7 +46,7 @@ namespace LGC.PTI.HTTPClient.GraphQL
             });
 
         public Aff<Option<EmployeeInDto>> TryGetEmployeeOptional(NotEmptyString employeeId) =>
-            LanguageExtAffExtensions.Aff<Option<EmployeeInDto>>(async () =>
+            AsAff<Option<EmployeeInDto>>(async () =>
             {
                 var employees = await _client.GetEmployeesAsync().ConfigureAwait(false);
                 var found = employees.FirstOrDefault(x =>
@@ -60,7 +59,7 @@ namespace LGC.PTI.HTTPClient.GraphQL
         public Aff<EmployeesResponse> TryUpdateEmployee(NotNull<EmployeeOutDto> employee) => Synchronize(employee.Value);
 
         public Aff<EmployeesResponse> TryUpdateEmployeeStatus(NotNull<EmployeeStatusOutDto> status) =>
-            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
+            AsAff<EmployeesResponse>(async () =>
             {
                 var result = await _synchronization.ChangeActivationAsync(
                     new EmployeeNumber(status.Value.EmployeeNumber),
@@ -70,12 +69,21 @@ namespace LGC.PTI.HTTPClient.GraphQL
             });
 
         private Aff<EmployeesResponse> Synchronize(EmployeeOutDto source) =>
-            LanguageExtAffExtensions.Aff<EmployeesResponse>(async () =>
+            AsAff<EmployeesResponse>(async () =>
             {
                 var employee = ToDomain(source);
                 var result = await _synchronization.SynchronizeAsync(employee).ConfigureAwait(false);
                 return ToResponse(result);
             });
+
+        /// <summary>
+        /// Wraps an asynchronous use case in a LanguageExt effect without depending on
+        /// SoftSolute.Utiities.Plugin, which targets .NET Framework rather than netstandard2.0.
+        /// </summary>
+        private static Aff<T> AsAff<T>(Func<System.Threading.Tasks.Task<T>> operation)
+        {
+            return Prelude.Aff(() => new System.Threading.Tasks.ValueTask<T>(operation()));
+        }
 
         private static PtiEmployee ToDomain(EmployeeOutDto source)
         {
