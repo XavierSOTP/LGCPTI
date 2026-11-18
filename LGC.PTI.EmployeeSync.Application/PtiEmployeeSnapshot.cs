@@ -1,12 +1,10 @@
-using System;
+using LanguageExt;
+using LanguageExt.Common;
 using LGC.PTI.EmployeeSync.Domain;
 
 namespace LGC.PTI.EmployeeSync.Application
 {
-    /// <summary>
-    /// Read model from PTI. It intentionally accepts partial remote data.
-    /// We only require complete details when turning a record into a write command.
-    /// </summary>
+    /// <summary>Read projection from PTI; remote data may be incomplete.</summary>
     public sealed class PtiEmployeeSnapshot
     {
         public string Number { get; }
@@ -35,18 +33,12 @@ namespace LGC.PTI.EmployeeSync.Application
             UnrestrictedUsage = unrestrictedUsage;
         }
 
-        public PtiEmployee ToEmployee()
-        {
-            if (Deleted)
-                throw new InvalidOperationException("Cannot synchronize a deleted PTI employee.");
-            if (string.IsNullOrWhiteSpace(Number) || string.IsNullOrWhiteSpace(Pin) ||
-                string.IsNullOrWhiteSpace(FirstName) || string.IsNullOrWhiteSpace(LastName) ||
-                string.IsNullOrWhiteSpace(DepartmentNumber))
-                throw new InvalidOperationException("Cannot synchronize an incomplete PTI employee record.");
-
-            return new PtiEmployee(
-                new EmployeeNumber(Number), new EmployeePin(Pin), FirstName,
-                LastName, DepartmentNumber, Active, Type, UnrestrictedUsage);
-        }
+        /// <summary>Only complete, non-deleted remote records can become write commands.</summary>
+        public Fin<PtiEmployee> ToEmployee() =>
+            Deleted
+                ? Prelude.FinFail<PtiEmployee>(Error.New("Cannot synchronize a deleted PTI employee."))
+                : PtiEmployee.Create(
+                    Number, Pin, FirstName, LastName, DepartmentNumber,
+                    Active, Type, UnrestrictedUsage);
     }
 }
