@@ -1,11 +1,10 @@
 using System;
+using LanguageExt;
+using LanguageExt.Common;
 
 namespace LGC.PTI.EmployeeSync.Domain
 {
-    /// <summary>
-    /// Employee as understood by the PTI synchronization domain (not by GraphQL or Genetec).
-    /// The aggregate owns its activation change and retains the rest of its properties.
-    /// </summary>
+    /// <summary>Validated employee entity independent of PTI's GraphQL schema.</summary>
     public sealed class PtiEmployee
     {
         public EmployeeNumber Number { get; }
@@ -17,24 +16,12 @@ namespace LGC.PTI.EmployeeSync.Domain
         public string Type { get; }
         public bool? UnrestrictedUsage { get; }
 
-        public PtiEmployee(
-            EmployeeNumber number,
-            EmployeePin pin,
-            string firstName,
-            string lastName,
-            string departmentNumber,
-            bool active,
-            string type = null,
-            bool? unrestrictedUsage = null)
+        private PtiEmployee(
+            EmployeeNumber number, EmployeePin pin, string firstName, string lastName,
+            string departmentNumber, bool active, string type, bool? unrestrictedUsage)
         {
-            Number = number ?? throw new ArgumentNullException(nameof(number));
-            Pin = pin ?? throw new ArgumentNullException(nameof(pin));
-
-            if (string.IsNullOrWhiteSpace(firstName) ||
-                string.IsNullOrWhiteSpace(lastName) ||
-                string.IsNullOrWhiteSpace(departmentNumber))
-                throw new InvalidOperationException("PTI employee requires first name, last name and department.");
-
+            Number = number;
+            Pin = pin;
             FirstName = firstName;
             LastName = lastName;
             DepartmentNumber = departmentNumber;
@@ -43,8 +30,39 @@ namespace LGC.PTI.EmployeeSync.Domain
             UnrestrictedUsage = unrestrictedUsage;
         }
 
-        /// <summary>Activation/deactivation is a state change, never a deletion.</summary>
+        /// <summary>Validates the complete record without throwing for missing business data.</summary>
+        public static Fin<PtiEmployee> Create(
+            string number, string pin, string firstName, string lastName,
+            string departmentNumber, bool active, string type = null,
+            bool? unrestrictedUsage = null) =>
+            EmployeeNumber.Create(number).Match(
+                Fail: error => Prelude.FinFail<PtiEmployee>(error),
+                Succ: validNumber => EmployeePin.Create(pin).Match(
+                    Fail: error => Prelude.FinFail<PtiEmployee>(error),
+                    Succ: validPin => Create(
+                        validNumber, validPin, firstName, lastName, departmentNumber,
+                        active, type, unrestrictedUsage)));
+
+        public static Fin<PtiEmployee> Create(
+            EmployeeNumber number, EmployeePin pin, string firstName, string lastName,
+            string departmentNumber, bool active, string type = null,
+            bool? unrestrictedUsage = null)
+        {
+            if (number == null || pin == null ||
+                string.IsNullOrWhiteSpace(firstName) ||
+                string.IsNullOrWhiteSpace(lastName) ||
+                string.IsNullOrWhiteSpace(departmentNumber))
+                return Prelude.FinFail<PtiEmployee>(
+                    Error.New("PTI employee requires number, PIN, first name, last name and department."));
+
+            return Prelude.FinSucc(new PtiEmployee(
+                number, pin, firstName, lastName, departmentNumber,
+                active, type, unrestrictedUsage));
+        }
+
+        /// <summary>Immutable activation change; validated fields remain unchanged.</summary>
         public PtiEmployee WithActive(bool active) =>
-            new PtiEmployee(Number, Pin, FirstName, LastName, DepartmentNumber, active, Type, UnrestrictedUsage);
+            new PtiEmployee(Number, Pin, FirstName, LastName, DepartmentNumber,
+                active, Type, UnrestrictedUsage);
     }
 }
