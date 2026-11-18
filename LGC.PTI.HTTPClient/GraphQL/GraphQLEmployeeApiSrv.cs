@@ -6,6 +6,7 @@ using LGC.PTI.EmployeeSync.Domain;
 using LGC.PTI.GraphQL.Transport;
 using LGC.PTI.HTTPClient.Refit.Employees;
 using SoftSolute.Common.Utilities;
+using SoftSolute.Utiities.Plugin.Adapters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
