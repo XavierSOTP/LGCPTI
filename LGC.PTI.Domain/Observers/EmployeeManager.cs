@@ -84,6 +84,14 @@ public sealed class EmployeeManager : IEmployeeManager
             .TryGetEmployees()
             .RunAsync();
 
+        if (result.IsFail)
+        {
+            result.IfFail(error => Logger.LogError(
+                "Initial PTI synchronization stopped because the employee query failed: {Error}",
+                error.Message));
+            return;
+        }
+
         var ptiEmployees = result.ForceGetValue();
 
         Logger.LogInformation("Existing employees retrieved from PTI. EmployeeCount: {EmployeeCount}", ptiEmployees.Count);
@@ -209,6 +217,14 @@ public sealed class EmployeeManager : IEmployeeManager
         var result = await EmployeeApiSrv
             .TryGetEmployee(entity.EmployeeNumber)
             .RunAsync();
+
+        if (result.IsFail)
+        {
+            result.IfFail(error => Logger.LogError(
+                "PTI employee lookup failed. EmployeeNumber: {EmployeeNumber}, Error: {Error}",
+                entity.EmployeeNumber, error.Message));
+            return;
+        }
 
         var existingEmployee = result.ForceGetValue();
 
