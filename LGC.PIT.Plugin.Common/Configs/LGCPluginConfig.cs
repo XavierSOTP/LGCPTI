@@ -13,6 +13,13 @@ public sealed class LGCPluginConfig : BasePluginConfig<LGCPluginConfig>
 
     //public string SCLoginUsername { get; set; } = string.Empty;
 
+    public string GraphQLUrl { get; set; } = GraphQLSettings.DefaultEndpoint;
+    public string GraphQLEmail { get; set; } = string.Empty;
+
+    [SensitiveData]
+    public string GraphQLPassword { get; set; } = string.Empty;
+
+    // The REST fields remain only for backwards compatibility with saved role settings.
     public string EmployeeUrl { get; set; }
 
     [SensitiveData]
@@ -34,6 +41,9 @@ public sealed class LGCPluginConfig : BasePluginConfig<LGCPluginConfig>
         {
             //SCLoginUsername = this.SCLoginUsername,
             //SCLoginPassword = this.SCLoginPassword,
+            GraphQLUrl = this.GraphQLUrl,
+            GraphQLEmail = this.GraphQLEmail,
+            GraphQLPassword = this.GraphQLPassword,
             EmployeeUrl = this.EmployeeUrl,
             TokenURL = this.TokenURL,
             GrantType = this.GrantType,

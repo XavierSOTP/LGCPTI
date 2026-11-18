@@ -22,20 +22,10 @@ namespace LGC.PTI.Plugin.Client.ConfigPages.Plugin.General
         //    }
         //}
 
-        private void LGCClientIdChange(object sender, RoutedEventArgs e)
+        private void GraphQLPasswordChanged(object sender, RoutedEventArgs e)
         {
             if (DataContext is ConfigPage vm && sender is PasswordBox passwordBox)
-            {
-                vm.ClientId = passwordBox.Password;
-            }
-        }
-
-        private void LGCClientSecretChange(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is ConfigPage vm && sender is PasswordBox passwordBox)
-            {
-                vm.ClientSecret = passwordBox.Password;
-            }
+                vm.GraphQLPassword = passwordBox.Password;
         }
 
         private void OnlyNumbersFromInput(object sender, TextCompositionEventArgs e)

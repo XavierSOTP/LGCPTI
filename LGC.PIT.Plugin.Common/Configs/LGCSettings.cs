@@ -6,4 +6,5 @@ public sealed class LGCSettings
 {    
     public Guid CardholderGroupId { get; set; }
     public ApiSettings ApiSettings { get; set; }
+    public GraphQLSettings GraphQLSettings { get; set; }
 }

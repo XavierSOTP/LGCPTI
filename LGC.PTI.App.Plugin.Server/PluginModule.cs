@@ -603,8 +603,7 @@ public partial class PluginModule : BasePluginModule<LGCPluginConfig>, IPluginDa
             appConfig.TransactSettings.ConnectionString =
                 _databaseManager.GetConnectionString();
 
-            ServerLog.Info(
-                appConfig.ToString());
+            ServerLog.Info("PTI configuration mapped; credential values omitted.");
 
             _appCts = new CancellationTokenSource();
 

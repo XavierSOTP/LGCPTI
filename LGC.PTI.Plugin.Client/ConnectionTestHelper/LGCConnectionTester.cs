@@ -1,148 +1,94 @@
-﻿using LGC.PIT.Plugin.Common.Configs;
+using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace LGC.PTI.Plugin.Client;
 
-/// <summary>
-/// Represents the result of an LGC API connection test.
-/// </summary>
-public class ConnectionTestResult
+public sealed class ConnectionTestResult
 {
-    /// <summary>
-    /// Gets or sets a value indicating whether the connection test completed successfully.
-    /// </summary>
     public bool Success { get; set; }
-
-    /// <summary>
-    /// Gets or sets the message describing the result of the connection test.
-    /// </summary>
     public string Message { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// Provides functionality for testing connectivity and authentication
-/// against the LGC API token endpoint.
-/// </summary>
+/// <summary>Tests PTI credentials through the GraphQL login mutation, not REST OAuth.</summary>
 public static class LGCConnectionTester
 {
-    private static readonly HttpClient _client = new()
+    private static readonly HttpClient Client = new HttpClient
     {
         Timeout = TimeSpan.FromSeconds(15)
     };
 
-    /// <summary>
-    /// Tests the configured LGC API credentials by requesting an access token.
-    /// </summary>
-    /// <param name="tokenUrl">
-    /// The base URL of the authentication service.
-    /// </param>
-    /// <param name="clientId">
-    /// The client identifier used for OAuth authentication.
-    /// </param>
-    /// <param name="clientSecret">
-    /// The client secret used for OAuth authentication.
-    /// </param>
-    /// <returns>
-    /// A task containing the result of the connection test.
-    /// </returns>
     public static async Task<ConnectionTestResult> TestAsync(
-        string tokenUrl,
-        string clientId,
-        string clientSecret)
+        string endpoint, string email, string password)
     {
-        if (string.IsNullOrWhiteSpace(tokenUrl) ||
-            string.IsNullOrWhiteSpace(clientId) ||
-            string.IsNullOrWhiteSpace(clientSecret))
-        {
-            return Fail("Fill in all LGC API Security fields before testing.");
-        }
+        if (string.IsNullOrWhiteSpace(endpoint) ||
+            string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+            return Fail("Enter the GraphQL URL, email, and password before testing.");
+
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps)
+            return Fail("GraphQL URL must be a valid HTTPS URL.");
 
         try
         {
-            var body = new FormUrlEncodedContent(new[]
+            var payload = JsonSerializer.Serialize(new
             {
-                new KeyValuePair<string, string>("grant_type",    AppConstants.DEFAULT_GRANT_TYPE),
-                new KeyValuePair<string, string>("client_id",     clientId),
-                new KeyValuePair<string, string>("client_secret", clientSecret)
+                query = "mutation Login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }",
+                variables = new { email, password }
             });
 
-            var finalTokenUrl = $"{tokenUrl.TrimEnd('/')}/token";
+            using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+            {
+                Content = new StringContent(payload, Encoding.UTF8, "application/json")
+            };
+            using var response = await Client.SendAsync(request).ConfigureAwait(false);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, finalTokenUrl) { Content = body };
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (!response.IsSuccessStatusCode)
+                return Fail($"GraphQL login failed (HTTP {(int)response.StatusCode}). Check endpoint and credentials.");
 
-            var response = await _client.SendAsync(request);
-            var body2 = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
 
-            if (response.IsSuccessStatusCode && body2.Contains("access_token"))
-                return Ok("Connection successful. Token obtained from iqtechportal.");
+            if (root.TryGetProperty("errors", out var errors) &&
+                errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0)
+                return Fail("PTI rejected the GraphQL login. Check the email and password.");
 
-            return Fail(ResolveError(response.StatusCode, body2));
+            if (root.TryGetProperty("data", out var data) &&
+                data.ValueKind == JsonValueKind.Object &&
+                data.TryGetProperty("login", out var login) &&
+                login.ValueKind == JsonValueKind.Object &&
+                login.TryGetProperty("token", out var token) &&
+                token.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(token.GetString()))
+                return Ok("GraphQL connection successful. Login token obtained.");
+
+            return Fail("GraphQL login did not return a token.");
         }
         catch (TaskCanceledException)
         {
-            return Fail("Timed out (15s). Verify the Service URL and network connectivity.");
+            return Fail("Connection timed out (15 seconds). Check endpoint and network.");
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            return Fail($"Network error: {ex.Message}");
+            return Fail("Unable to reach the GraphQL endpoint. Check URL and network.");
         }
-        catch (Exception ex)
+        catch (JsonException)
         {
-            return Fail($"Unexpected error: {ex.Message}");
+            return Fail("PTI returned an invalid GraphQL response.");
+        }
+        catch (Exception)
+        {
+            return Fail("Unexpected error while testing the GraphQL connection.");
         }
     }
 
-    /// <summary>
-    /// Creates a successful connection test result.
-    /// </summary>
-    /// <param name="msg">
-    /// The message associated with the successful result.
-    /// </param>
-    /// <returns>
-    /// A successful <see cref="ConnectionTestResult"/>.
-    /// </returns>
-    private static ConnectionTestResult Ok(string msg) => new() { Success = true, Message = msg };
+    private static ConnectionTestResult Ok(string message) =>
+        new ConnectionTestResult { Success = true, Message = message };
 
-    /// <summary>
-    /// Creates a failed connection test result.
-    /// </summary>
-    /// <param name="msg">
-    /// The message describing the failure.
-    /// </param>
-    /// <returns>
-    /// A failed <see cref="ConnectionTestResult"/>.
-    /// </returns>
-    private static ConnectionTestResult Fail(string msg) => new() { Success = false, Message = msg };
-
-    /// <summary>
-    /// Resolves an HTTP response into a user-friendly connection error message.
-    /// </summary>
-    /// <param name="code">
-    /// The HTTP status code returned by the authentication endpoint.
-    /// </param>
-    /// <param name="body">
-    /// The response body returned by the authentication endpoint.
-    /// </param>
-    /// <returns>
-    /// A user-friendly description of the connection or authentication error.
-    /// </returns>
-    private static string ResolveError(System.Net.HttpStatusCode code, string body)
-    {
-        if (body.Contains("invalid_client"))
-            return $"HTTP {(int)code}: Invalid Client ID or Client Secret.";
-        if (body.Contains("invalid_grant") || body.Contains("LDAP"))
-            return $"HTTP {(int)code}: Invalid username or password.";
-        if (body.Contains("unauthorized_client"))
-            return $"HTTP {(int)code}: Client not authorized for password grant. Check the OAuth app in ServiceNow.";
-        if (code == System.Net.HttpStatusCode.NotFound)
-            return "HTTP 404: Service URL not found. Verify the instance URL.";
-        if (code == System.Net.HttpStatusCode.Unauthorized)
-            return "HTTP 401: Unauthorized. Check credentials and OAuth configuration.";
-        if (code == System.Net.HttpStatusCode.Forbidden)
-            return "HTTP 403: Forbidden. The user may lack required roles in ServiceNow.";
-
-        return $"HTTP {(int)code}: {body}";
-    }
+    private static ConnectionTestResult Fail(string message) =>
+        new ConnectionTestResult { Success = false, Message = message };
 }

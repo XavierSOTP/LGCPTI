@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+using System;
+using FluentValidation;
 
 namespace LGC.PIT.Plugin.Common.Configs;
 
@@ -15,22 +16,20 @@ public sealed class LGCPluginConfigValidator : AbstractValidator<LGCPluginConfig
         //    .NotEmpty().WithMessage("Genetec password is required.")
         //    .Must(NotBeWhiteSpace).WithMessage("Genetec password cannot be whitespace.");
 
-        // LGC API - Service Settings
-        RuleFor(x => x.EmployeeUrl)
-            .NotEmpty().WithMessage("Employee service URL is required.")
-            .Must(NotBeWhiteSpace).WithMessage("Employee service URL cannot be whitespace.");
+        // GraphQL uses a single HTTPS endpoint and an email/password login.
+        RuleFor(x => x.GraphQLUrl)
+            .NotEmpty().WithMessage("GraphQL URL is required.")
+            .Must(value => Uri.TryCreate(value, UriKind.Absolute, out var url)
+                && url.Scheme == Uri.UriSchemeHttps)
+            .WithMessage("GraphQL URL must be an absolute HTTPS URL.");
 
-        RuleFor(x => x.TokenURL)
-            .NotEmpty().WithMessage("Token service URL is required.")
-            .Must(NotBeWhiteSpace).WithMessage("Token service URL cannot be whitespace.");
+        RuleFor(x => x.GraphQLEmail)
+            .NotEmpty().WithMessage("GraphQL login email is required.")
+            .EmailAddress().WithMessage("Enter a valid GraphQL login email.");
 
-        RuleFor(x => x.ClientId)
-            .NotEmpty().WithMessage("Client ID is required.")
-            .Must(NotBeWhiteSpace).WithMessage("Client ID cannot be whitespace.");
-
-        RuleFor(x => x.ClientSecret)
-            .NotEmpty().WithMessage("Client secret is required.")
-            .Must(NotBeWhiteSpace).WithMessage("Client secret cannot be whitespace.");
+        RuleFor(x => x.GraphQLPassword)
+            .NotEmpty().WithMessage("GraphQL password is required.")
+            .Must(NotBeWhiteSpace).WithMessage("GraphQL password cannot be whitespace.");
     }
 
     private static bool NotBeWhiteSpace(string value) =>

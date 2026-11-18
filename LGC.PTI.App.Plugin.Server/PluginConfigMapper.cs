@@ -31,6 +31,12 @@ public static class PluginConfigMapper
                 LGCSettings = new LGCSettings
                 {
                     CardholderGroupId = pluginConfig.CardholderGroupId,
+                    GraphQLSettings = new GraphQLSettings
+                    {
+                        Endpoint = pluginConfig.GraphQLUrl,
+                        Email = pluginConfig.GraphQLEmail,
+                        Password = pluginConfig.GraphQLPassword
+                    },
                     ApiSettings = new ApiSettings
                     {
                         EmployeeUrl = pluginConfig.EmployeeUrl,

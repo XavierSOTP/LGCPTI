@@ -41,7 +41,7 @@
                 </StackPanel>
             </GroupBox>-->
 
-            <GroupBox Header="Iq Tech portal API Configuration"
+            <GroupBox Header="PTI GraphQL Configuration"
           Foreground="#2973B7"
           FontWeight="Bold"
           Margin="0,0,0,10"
@@ -66,17 +66,17 @@
                   BorderThickness="0.5" Grid.ColumnSpan="2">
 
                         <StackPanel Margin="10">
-                            <TextBlock Text="Employee URL *"
+                            <TextBlock Text="GraphQL URL *"
                            Margin="0,10,0,0"
                            Foreground="White"/>
 
-                            <TextBox Text="{Binding EmployeeUrl,
+                            <TextBox Text="{Binding GraphQLUrl,
                                 Mode=TwoWay,
                                 UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </GroupBox>
 
-                    <GroupBox Header="Security"
+                    <GroupBox Header="GraphQL Authentication"
           Grid.Row="1"
           Foreground="#3A86C8"
           BorderBrush="#666"
@@ -84,15 +84,13 @@
 
                         <StackPanel Margin="10">
 
-                            <TextBlock Text="Token Url *" Margin="0,10,0,0" Foreground="White"/>
-                            <TextBox Text="{Binding TokenURL, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Email *" Margin="0,10,0,0" Foreground="White"/>
+                            <TextBox Text="{Binding GraphQLEmail, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Text="Client Id *" Foreground="White"/>
-                            <PasswordBox PasswordChanged="LGCClientIdChange"/>
-
-                            <TextBlock Text="Client Secret *" Foreground="White"/>
-                            <PasswordBox PasswordChanged="LGCClientSecretChange"/>
-
+                            <TextBlock Text="Password *" Margin="0,10,0,0" Foreground="White"/>
+                            <PasswordBox PasswordChanged="GraphQLPasswordChanged"/>
+                            <TextBlock Text="The stored password is retained until you enter a replacement."
+                                       Foreground="#aaa" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
                             <Button Content="Test Connection"
                 Command="{Binding TestConnectionCommand}"

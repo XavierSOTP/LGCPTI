@@ -186,6 +186,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configs\ApiSettings.cs" />
+    <Compile Include="Configs\GraphQLSettings.cs" />
     <Compile Include="Configs\AppConstants.cs" />
     <Compile Include="Configs\IConfigurableAppSettings.cs" />
     <Compile Include="Configs\LGCExeSettings.cs" />

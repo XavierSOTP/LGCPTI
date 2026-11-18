@@ -106,69 +106,40 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         }
     }
 
-    /// <summary>
-    /// Gets or sets the employee API endpoint.
-    /// </summary>
-    public string EmployeeUrl
+    /// <summary>GraphQL endpoint used by PTI.</summary>
+    public string GraphQLUrl
     {
-        get => PluginConfig.EmployeeUrl ?? string.Empty;
+        get => PluginConfig.GraphQLUrl ?? string.Empty;
         set
         {
-            if (PluginConfig.EmployeeUrl == value)
-                return;
-
-            PluginConfig.EmployeeUrl = value;
+            if (PluginConfig.GraphQLUrl == value) return;
+            PluginConfig.GraphQLUrl = value;
             IsDirty = true;
             OnPropertyChanged();
         }
     }
 
-    /// <summary>
-    /// Gets or sets the OAuth token endpoint.
-    /// </summary>
-    public string TokenURL
+    /// <summary>Email used for PTI GraphQL login.</summary>
+    public string GraphQLEmail
     {
-        get => PluginConfig.TokenURL ?? string.Empty;
+        get => PluginConfig.GraphQLEmail ?? string.Empty;
         set
         {
-            if (PluginConfig.TokenURL == value)
-                return;
-
-            PluginConfig.TokenURL = value;
+            if (PluginConfig.GraphQLEmail == value) return;
+            PluginConfig.GraphQLEmail = value;
             IsDirty = true;
             OnPropertyChanged();
         }
     }
 
-    /// <summary>
-    /// Gets or sets the OAuth client identifier.
-    /// </summary>
-    public string ClientId
+    /// <summary>PTI GraphQL password; never log this value.</summary>
+    public string GraphQLPassword
     {
-        get => PluginConfig.ClientId ?? string.Empty;
+        get => PluginConfig.GraphQLPassword ?? string.Empty;
         set
         {
-            if (PluginConfig.ClientId == value)
-                return;
-
-            PluginConfig.ClientId = value;
-            IsDirty = true;
-            OnPropertyChanged();
-        }
-    }
-
-    /// <summary>
-    /// Gets or sets the OAuth client secret.
-    /// </summary>
-    public string ClientSecret
-    {
-        get => PluginConfig.ClientSecret ?? string.Empty;
-        set
-        {
-            if (PluginConfig.ClientSecret == value)
-                return;
-
-            PluginConfig.ClientSecret = value;
+            if (PluginConfig.GraphQLPassword == value) return;
+            PluginConfig.GraphQLPassword = value;
             IsDirty = true;
             OnPropertyChanged();
         }
@@ -458,9 +429,9 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         TestStatusVisibility = Visibility.Collapsed;
 
         var result = await LGCConnectionTester.TestAsync(
-            tokenUrl: TokenURL,
-            clientId: ClientId,
-            clientSecret: ClientSecret);
+            endpoint: GraphQLUrl,
+            email: GraphQLEmail,
+            password: GraphQLPassword);
 
         TestStatusIcon = result.Success ? "✔" : "✘";
         TestStatusMessage = result.Message;
