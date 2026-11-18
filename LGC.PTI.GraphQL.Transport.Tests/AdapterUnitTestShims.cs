@@ -1,5 +1,7 @@
-// Test-only shims: compile the production adapter source without installing the Genetec SDK
-// or private SoftSolute packages. These classes are NEVER included in a production project.
+// Test-only shims for SoftSolute/Genetec dependencies.
+// IMPORTANT: Aff<T> and Option<T> are now the real LanguageExt.Core package types.
+// The test-only Aff factory delegates to the same LanguageExt Prelude.Aff as the production helper.
+// These shims are NEVER included in a production project.
 global using LanguageExt;
 global using LGC.PTI.Common.Application.Dtos;
 global using LGC.PTI.Common.Infrastructure.ExternalApi.Dtos;
@@ -10,27 +12,6 @@ global using System;
 global using System.ComponentModel;
 global using System.Collections.Generic;
 global using System.Threading.Tasks;
-
-namespace LanguageExt
-{
-    public readonly struct Option<T>
-    {
-        private readonly T _value;
-        public bool IsSome { get; }
-        private Option(T value) { _value = value; IsSome = true; }
-        public static Option<T> None => default;
-        public static implicit operator Option<T>(T value) => value == null ? None : new Option<T>(value);
-        public T IfNone(T fallback) => IsSome ? _value : fallback;
-        public Option<U> Map<U>(Func<T, U> map) => IsSome ? (Option<U>)map(_value) : Option<U>.None;
-    }
-
-    public readonly struct Aff<T>
-    {
-        private readonly Func<Task<T>> _run;
-        public Aff(Func<Task<T>> run) => _run = run;
-        public Task<T> RunAsync() => _run();
-    }
-}
 
 namespace SoftSolute.Common.Utilities
 {
@@ -52,7 +33,8 @@ namespace SoftSolute.Common.Utilities
 
     public static class LanguageExtAffExtensions
     {
-        public static Aff<T> Aff<T>(Func<Task<T>> action) => new Aff<T>(action);
+        public static Aff<T> Aff<T>(Func<Task<T>> action) =>
+            Prelude.Aff(() => new ValueTask<T>(action()));
     }
 }
 
