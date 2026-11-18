@@ -50,10 +50,6 @@ namespace SoftSolute.Common.Utilities
         public override string ToString() => _value;
     }
 
-    public static class LanguageExtAffExtensions
-    {
-        public static Aff<T> Aff<T>(Func<Task<T>> action) => new Aff<T>(action);
-    }
 }
 
 namespace SoftSolute.Common.Utilities.LanguageExtSS
@@ -79,5 +75,13 @@ namespace LGC.PTI.Domain.Models
     public sealed class EmployeeModel
     {
         public string EmployeeNumber { get; set; }
+    }
+}
+
+namespace SoftSolute.Utiities.Plugin.Adapters
+{
+    public static class LanguageExtAffExtensions
+    {
+        public static Aff<T> Aff<T>(Func<Task<T>> action) => new Aff<T>(action);
     }
 }
