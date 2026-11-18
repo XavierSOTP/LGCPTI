@@ -1,16 +1,17 @@
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
+using LanguageExt;
 using LGC.PTI.EmployeeSync.Domain;
 
 namespace LGC.PTI.EmployeeSync.Application
 {
-    /// <summary>
-    /// Outbound port. The application knows nothing about GraphQL, REST, HTTP or DTOs.
-    /// </summary>
+    /// <summary>Outbound port. The application does not know about GraphQL, REST or HTTP.</summary>
     public interface IPtiEmployeeGateway
     {
-        Task<IReadOnlyList<PtiEmployeeSnapshot>> GetEmployeesAsync(CancellationToken cancellationToken = default);
-        Task<EmployeeSyncOutcome> SaveAsync(PtiEmployee employee, CancellationToken cancellationToken = default);
+        Aff<IReadOnlyList<PtiEmployeeSnapshot>> GetEmployeesAsync(
+            CancellationToken cancellationToken = default);
+
+        Aff<EmployeeSyncOutcome> SaveAsync(
+            PtiEmployee employee, CancellationToken cancellationToken = default);
     }
 }
