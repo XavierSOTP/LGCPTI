@@ -1,4 +1,5 @@
-using System;
+using LanguageExt;
+using LanguageExt.Common;
 using LGC.PTI.EmployeeSync.Domain;
 
 namespace LGC.PTI.EmployeeSync.Application
@@ -9,11 +10,18 @@ namespace LGC.PTI.EmployeeSync.Application
         public EmployeeChangeKind Change { get; }
         public PtiEmployeeSnapshot Employee { get; }
 
-        public EmployeeSyncOutcome(EmployeeNumber number, EmployeeChangeKind change, PtiEmployeeSnapshot employee)
+        private EmployeeSyncOutcome(
+            EmployeeNumber number, EmployeeChangeKind change, PtiEmployeeSnapshot employee)
         {
-            Number = number ?? throw new ArgumentNullException(nameof(number));
+            Number = number;
             Change = change;
-            Employee = employee ?? throw new ArgumentNullException(nameof(employee));
+            Employee = employee;
         }
+
+        public static Fin<EmployeeSyncOutcome> Create(
+            EmployeeNumber number, EmployeeChangeKind change, PtiEmployeeSnapshot employee) =>
+            number == null || employee == null
+                ? Prelude.FinFail<EmployeeSyncOutcome>(Error.New("Employee synchronization outcome is incomplete."))
+                : Prelude.FinSucc(new EmployeeSyncOutcome(number, change, employee));
     }
 }
