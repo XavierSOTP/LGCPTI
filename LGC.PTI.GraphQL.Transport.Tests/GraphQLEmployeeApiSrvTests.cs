@@ -61,14 +61,22 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
-        public async Task RealAff_ArgumentNullExceptionInsideEffectBecomesFinFail()
+        public async Task ExpectedValidationError_UsesFailAffWithoutThrowing()
         {
-            var effect = Prelude.Aff(() =>
-                new ValueTask<int>(Task.FromException<int>(new ArgumentNullException("employee"))));
+            var effect = Prelude.FailAff<int>(
+                LanguageExt.Common.Error.New("Employee validation failed."));
 
             var fin = await effect.Run().ConfigureAwait(false);
 
             Assert.That(fin.IsFail, Is.True);
+        }
+
+        [Test]
+        public async Task MissingClient_ProducesFinFailWithoutThrowing()
+        {
+            var service = new GraphQLEmployeeApiSrv(null);
+            await ExpectFailureAsync(service.TryGetEmployees());
+            await ExpectFailureAsync(service.TryCreateEmployee(OutEmployee()));
         }
 
         private static EmployeeOutDto OutEmployee(string pin = "00123") => new EmployeeOutDto
