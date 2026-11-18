@@ -1,21 +1,21 @@
 using System;
+using LanguageExt;
+using LanguageExt.Common;
 
 namespace LGC.PTI.EmployeeSync.Domain
 {
-    /// <summary>
-    /// Identity of an employee inside the PTI synchronization bounded context.
-    /// Never convert it to an integer: zeroes can be significant.
-    /// </summary>
+    /// <summary>PTI employee identifier; keeps leading zeroes.</summary>
     public sealed class EmployeeNumber : IEquatable<EmployeeNumber>
     {
         public string Value { get; }
 
-        public EmployeeNumber(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentException("Employee number is required.", nameof(value));
-            Value = value;
-        }
+        private EmployeeNumber(string value) => Value = value;
+
+        /// <summary>An invalid identifier is a domain failure, not an exception.</summary>
+        public static Fin<EmployeeNumber> Create(string value) =>
+            string.IsNullOrWhiteSpace(value)
+                ? Prelude.FinFail<EmployeeNumber>(Error.New("Employee number is required."))
+                : Prelude.FinSucc(new EmployeeNumber(value));
 
         public bool Equals(EmployeeNumber other) =>
             other != null && string.Equals(Value, other.Value, StringComparison.OrdinalIgnoreCase);
