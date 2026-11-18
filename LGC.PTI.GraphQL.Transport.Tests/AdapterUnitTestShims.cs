@@ -30,6 +30,13 @@ namespace LanguageExt
         public Aff(Func<Task<T>> run) => _run = run;
         public Task<T> RunAsync() => _run();
     }
+
+    // The test-only Prelude mirrors the LanguageExt.Core API used in production.
+    public static class Prelude
+    {
+        public static Aff<T> Aff<T>(Func<ValueTask<T>> operation) =>
+            new Aff<T>(() => operation().AsTask());
+    }
 }
 
 namespace SoftSolute.Common.Utilities
@@ -78,10 +85,3 @@ namespace LGC.PTI.Domain.Models
     }
 }
 
-namespace SoftSolute.Utiities.Plugin.Adapters
-{
-    public static class LanguageExtAffExtensions
-    {
-        public static Aff<T> Aff<T>(Func<Task<T>> action) => new Aff<T>(action);
-    }
-}
