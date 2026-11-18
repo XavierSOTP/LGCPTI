@@ -540,9 +540,9 @@
       <Project>{E4FC33BA-0390-4FBA-A13A-7E760E048BCE}</Project>
       <Name>LGC.PTI.Infrastructure</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj">
+    <ProjectReference Include="..\SoftSolute.Utilities.Plugin\SoftSolute.Utilities.Plugin.csproj">
       <Project>{d4f2de3b-da97-4960-87e8-c9bb685b092f}</Project>
-      <Name>SoftSolute.Utiities.Plugin</Name>
+      <Name>SoftSolute.Utilities.Plugin</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -17,7 +17,7 @@
     <ProjectReference Include="..\LGC.PTI.Domain.Common\LGC.PTI.Domain.Common.csproj" />
     <ProjectReference Include="..\LGC.PTI.HTTPClient\LGC.PTI.HTTPClient.csproj" />
     <ProjectReference Include="..\LGC.PTI.Infrastructure\LGC.PTI.Infrastructure.csproj" />
-    <ProjectReference Include="..\SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj" />
+    <ProjectReference Include="..\SoftSolute.Utilities.Plugin\SoftSolute.Utilities.Plugin.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Genetec.Sdk">

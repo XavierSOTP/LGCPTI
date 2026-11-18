@@ -29,7 +29,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LGC.PTI.App.Plugin.Server",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LGC.PTI.BussinesLogic", "LGC.PTI.BussinesLogic\LGC.PTI.BussinesLogic.csproj", "{1C6684D6-6854-432F-89BA-53674D1DD87D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftSolute.Utiities.Plugin", "SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj", "{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftSolute.Utilities.Plugin", "SoftSolute.Utilities.Plugin\SoftSolute.Utilities.Plugin.csproj", "{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftSolute.Plugin.Installer", "SoftSolute.Plugin.Installer\SoftSolute.Plugin.Installer.csproj", "{9B2E7C14-5F6A-4D83-A1C9-72E4B8F30D65}"
 EndProject
@@ -102,12 +102,12 @@ Global
 		{1C6684D6-6854-432F-89BA-53674D1DD87D}.FakeApi|Any CPU.Build.0 = Debug|Any CPU
 		{1C6684D6-6854-432F-89BA-53674D1DD87D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C6684D6-6854-432F-89BA-53674D1DD87D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.FakeApi|Any CPU.ActiveCfg = Debug|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.FakeApi|Any CPU.Build.0 = Debug|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D4F2DE3B-DA97-4960-87E8-C9BB685B092F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.FakeApi|Any CPU.ActiveCfg = Debug|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.FakeApi|Any CPU.Build.0 = Debug|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F80C83FE-24C3-4B55-9A50-6E43AD8E8029}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9B2E7C14-5F6A-4D83-A1C9-72E4B8F30D65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9B2E7C14-5F6A-4D83-A1C9-72E4B8F30D65}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B2E7C14-5F6A-4D83-A1C9-72E4B8F30D65}.FakeApi|Any CPU.ActiveCfg = Debug|Any CPU

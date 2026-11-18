@@ -31,11 +31,7 @@ namespace SoftSolute.Common.Utilities
         public override string ToString() => _value;
     }
 
-    public static class LanguageExtAffExtensions
-    {
-        public static Aff<T> Aff<T>(Func<Task<T>> action) =>
-            Prelude.Aff(() => new ValueTask<T>(action()));
-    }
+
 }
 
 namespace SoftSolute.Common.Utilities.LanguageExtSS

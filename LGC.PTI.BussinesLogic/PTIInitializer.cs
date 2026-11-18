@@ -2,7 +2,7 @@
 using LanguageExt;
 using LGC.PIT.Plugin.Common.Configs;
 using LGC.PTI.Domain.Infrastructure.Mapping;
-using LGC.PTI.HTTPClient.Refit;
+using LGC.PTI.HTTPClient.GraphQL;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -284,7 +284,7 @@ public sealed class PTIInitializer(
     {
 
         program.Services.RegisterModule(new AppServiceConfiguration());
-        program.Services.RegisterModule(new HtppClientModule());
+        program.Services.RegisterModule(new GraphQLClientModule());
         program.Services.RegisterModule(new MapsterModule());
 
         //program.Services.RegisterModule(new CommonModule());

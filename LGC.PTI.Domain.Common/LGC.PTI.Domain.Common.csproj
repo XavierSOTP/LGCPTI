@@ -18,7 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LGC.PIT.Plugin.Common\LGC.PIT.Plugin.Common.csproj" />
-    <ProjectReference Include="..\SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj" />
+    <ProjectReference Include="..\SoftSolute.Utilities.Plugin\SoftSolute.Utilities.Plugin.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Genetec.Sdk">

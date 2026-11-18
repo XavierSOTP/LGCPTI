@@ -129,9 +129,9 @@
       <Project>{12FCD0D2-1F16-498E-8BCF-F8B113CA0AFB}</Project>
       <Name>LGC.PTI.Domain</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SoftSolute.Utiities.Plugin\SoftSolute.Utiities.Plugin.csproj">
+    <ProjectReference Include="..\SoftSolute.Utilities.Plugin\SoftSolute.Utilities.Plugin.csproj">
       <Project>{d4f2de3b-da97-4960-87e8-c9bb685b092f}</Project>
-      <Name>SoftSolute.Utiities.Plugin</Name>
+      <Name>SoftSolute.Utilities.Plugin</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

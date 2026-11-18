@@ -7,6 +7,7 @@ using LGC.PTI.EmployeeSync.Domain;
 using LGC.PTI.GraphQL.Transport;
 using LGC.PTI.HTTPClient.Refit.Employees;
 using SoftSolute.Common.Utilities;
+using SoftSolute.Utiities.Plugin.Adapters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace LGC.PTI.HTTPClient.GraphQL
     /// <summary>
     /// Legacy IEmployeeApiSrv inbound adapter. It translates REST-shaped requests to the
     /// PTI synchronization use cases without leaking GraphQL into the domain.
-    /// Not registered in DI until the migration is ready.
+    /// Registered through GraphQLClientModule once the PTI GraphQL integration is enabled.
     /// </summary>
     public sealed class GraphQLEmployeeApiSrv : IEmployeeApiSrv
     {
