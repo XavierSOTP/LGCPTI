@@ -6,7 +6,6 @@ using LanguageExt;
 using LGC.PIT.Plugin.Common;
 using LGC.PIT.Plugin.Common.Configs;
 using LGC.PTI.Domain.Common;
-using LGC.PTI.Refit.Authentication;
 using LGC.PTI.Shared.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -65,21 +64,8 @@ public sealed partial class MainGenetecService(ILogger<MainGenetecService> logge
     /// </summary>
     private IPipeAppClient PipeAppClient { get; } = container.GetRequiredService<IPipeAppClient>();
 
-    /// <summary>
-    /// Gets the configurable application settings for the PTI plugin configuration.
-    /// </summary>
-    private IConfigurableAppSettings Settings { get; } = container.GetRequiredService<IConfigurableAppSettings>();
+    // PTI GraphQL authentication and Firebase token caching are managed by PtiGraphQLClient.
 
-    /// <summary>
-    /// Gets the authentication credential store managing OAuth credentials and tokens.
-    /// </summary>
-    private IAuthCredentialStore authCredentialStore { get;  } = container.GetRequiredService<IAuthCredentialStore>();
-
-    /// <summary>
-    /// Gets the authentication service for obtaining and managing API access tokens.
-    /// </summary>
-    private IAuthenticationSrv AuthenticationSrv { get; } =
-    container.GetRequiredService<IAuthenticationSrv>();
     #endregion Properties
 
     #region Public Methods
@@ -94,35 +80,9 @@ public sealed partial class MainGenetecService(ILogger<MainGenetecService> logge
         Logger.LogInformation(
             "Starting MainGenetecService.");
 
-        Logger.LogInformation(
-            "Authentication settings loaded. TokenUrl: {TokenUrl}, ClientId: {ClientId}, HasClientSecret: {HasClientSecret}",
-            Settings.LGCSettings.ApiSettings.TokenURL,
-            Settings.LGCSettings.ApiSettings.ClientId,
-            !string.IsNullOrWhiteSpace(
-                Settings.LGCSettings.ApiSettings.ClientSecret));
-
-        authCredentialStore.UpdateCredentials(
-            Settings.LGCSettings.ApiSettings.TokenURL,
-            Settings.LGCSettings.ApiSettings.ClientId,
-            Settings.LGCSettings.ApiSettings.ClientSecret);
-
-        Logger.LogInformation(
-            "Requesting initial authentication token.");
-
-        var tokenResult = await AuthenticationSrv
-            .TryGetTokenAsync()
-            .ConfigureAwait(false);
-
-        if (tokenResult.IsNone)
-        {
-            Logger.LogError(
-                "Initial authentication token could not be obtained.");
-
-            return;
-        }
-
-        Logger.LogInformation(
-            "Initial authentication token obtained successfully.");
+        // The GraphQL transport authenticates on the first PTI request
+        // and refreshes the Firebase token when necessary.
+        Logger.LogInformation("PTI GraphQL authentication is handled by the GraphQL client.");
 
         var startupPipeline =
             from licenseManager in ExecuteLicensePipeline()

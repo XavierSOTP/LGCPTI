@@ -50,7 +50,6 @@ public sealed partial class CardholderObserver :
     private static readonly Func<EntitiesUpdateEventArgs, bool> TriggerByUsers =
         static r => !r.IsLocalUpdate;
 
-    private readonly IAuthCredentialStore _authTokenStore;
     private readonly IConfigurableAppSettings Settings;
 
     private int _eventRegistrationCount;
@@ -66,7 +65,6 @@ public sealed partial class CardholderObserver :
     /// <param name="engine">The Genetec SDK engine for entity access and event handling.</param>
     /// <param name="logger">Logger for diagnostic and informational messages.</param>
     /// <param name="employeeManager">Manager responsible for employee entity operations.</param>
-    /// <param name="authTokenStore">Store for authentication credentials and tokens.</param>
     /// <param name="settings">Application configuration settings.</param>
     /// <param name="mapper">Mapper for converting between cardholder and employee entities.</param>
     /// <param name="credentialStateHandler">Handler for credential state changes.</param>
@@ -75,7 +73,6 @@ public sealed partial class CardholderObserver :
         IEngine engine,
         ILogger<CardholderObserver> logger,
         IEmployeeManager employeeManager,
-        IAuthCredentialStore authTokenStore,
         IConfigurableAppSettings settings,
         IMapper mapper,
         ICredentialStateHandler credentialStateHandler,
@@ -86,7 +83,6 @@ public sealed partial class CardholderObserver :
             CardholderObserverGuid)
     {
         EmployeeManager = employeeManager;
-        _authTokenStore = authTokenStore;
         Settings = settings;
         Mapper = mapper;
         CredentialStateHandler = credentialStateHandler;
@@ -171,12 +167,12 @@ public sealed partial class CardholderObserver :
     /// Initializes the cardholder observer after the application has completed initialization.
     /// </summary>
     /// <param name="cancellationToken">
-    /// A token used to cancel initialization while waiting for authentication or processing synchronization.
+    /// A token used to cancel initialization.
     /// </param>
     /// <returns>A task representing the asynchronous initialization operation.</returns>
     /// <remarks>
-    /// Initialization configures the observer, waits until an authentication token is available,
-    /// and then performs the initial repository synchronization.
+    /// Initialization configures the observer and then performs initial synchronization.
+    /// GraphQL login and token renewal occur inside the PTI GraphQL transport.
     /// </remarks>
     private async Task OnAppInitialized(
         CancellationToken cancellationToken)
@@ -202,10 +198,6 @@ public sealed partial class CardholderObserver :
             Logger.LogInformation(
                 "CardholderObserver configured successfully.");
 
-            await WaitForTokenAsync(
-                cancellationToken)
-                .ConfigureAwait(false);
-
             Logger.LogInformation(
                 "Starting Cardholder synchronization.");
 
@@ -227,46 +219,6 @@ public sealed partial class CardholderObserver :
                 ex,
                 "CardholderObserver initialization failed.");
         }
-    }
-
-    /// <summary>
-    /// Waits until an authentication token becomes available in the credential store.
-    /// </summary>
-    /// <param name="cancellationToken">
-    /// A token used to cancel the wait operation.
-    /// </param>
-    /// <returns>
-    /// A task that completes when an authentication token is available.
-    /// </returns>
-    /// <exception cref="OperationCanceledException">
-    /// Thrown when <paramref name="cancellationToken"/> is cancelled before a token becomes available.
-    /// </exception>
-    private async Task WaitForTokenAsync(
-        CancellationToken cancellationToken)
-    {
-        if (_authTokenStore.TryGetToken().IsSome)
-        {
-            Logger.LogInformation(
-                "Authentication token already available.");
-
-            return;
-        }
-
-        Logger.LogInformation(
-            "Authentication token not available. Waiting for token.");
-
-        while (_authTokenStore.TryGetToken().IsNone)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            await Task.Delay(
-                TimeSpan.FromMilliseconds(250),
-                cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        Logger.LogInformation(
-            "Authentication token received. Continuing initialization.");
     }
 
     /// <summary>
