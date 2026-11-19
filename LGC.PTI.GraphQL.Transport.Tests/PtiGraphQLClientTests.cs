@@ -168,6 +168,44 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
+        public async Task OpaqueLoginToken_IsAcceptedAndReusedWithoutJwtParsing()
+        {
+            var fake = new FakeHandler
+            {
+                LoginResponse = _ => Json(LoginResult("opaque-pti-token"))
+            };
+            var client = Client(fake);
+
+            await client.GetEmployeesAsync();
+            await client.GetEmployeesAsync();
+
+            Assert.AreEqual(1, fake.Logins);
+            Assert.AreEqual("opaque-pti-token", fake.LastAuthorization);
+        }
+
+        [Test]
+        public async Task CachedToken_RefreshesAfterFortyFiveMinutes()
+        {
+            var now = Now;
+            var fake = new FakeHandler
+            {
+                LoginResponse = i => Json(LoginResult("opaque-pti-token-" + i))
+            };
+            var client = Client(fake, () => now);
+
+            await client.GetEmployeesAsync();
+            now = now.AddMinutes(44);
+            await client.GetEmployeesAsync();
+            Assert.AreEqual(1, fake.Logins);
+
+            now = now.AddMinutes(2);
+            await client.GetEmployeesAsync();
+
+            Assert.AreEqual(2, fake.Logins);
+            Assert.AreEqual("opaque-pti-token-2", fake.LastAuthorization);
+        }
+
+        [Test]
         public async Task ConcurrentRequests_UseSingleLogin()
         {
             var fake = new FakeHandler();

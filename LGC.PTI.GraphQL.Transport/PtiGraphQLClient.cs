@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -10,7 +9,6 @@ using GraphQL;
 using GraphQL.Client.Abstractions;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.Newtonsoft;
-using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace LGC.PTI.GraphQL.Transport
@@ -49,6 +47,10 @@ namespace LGC.PTI.GraphQL.Transport
         private const string LoginMutation = "mutation Login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }";
         private const string EmployeesQuery = "query GetEmployees { getEmployees { " + EmployeeFields + " } }";
         private const string UpsertMutation = "mutation UpsertEmployees($employees: [EmployeeInput]) { addOrUpdateEmployees(employees: $employees) { " + EmployeeFields + " } }";
+        // Firebase ID tokens typically last around one hour. A shorter local TTL
+        // avoids relying on JWT parsing or token-specific formats; HTTP 401 and
+        // recognized GraphQL authentication errors also trigger a fresh login.
+        private static readonly TimeSpan TokenCacheLifetime = TimeSpan.FromMinutes(45);
         private readonly GraphQLHttpClient _graphql;
         private readonly string _email;
         private readonly string _password;
@@ -161,17 +163,16 @@ namespace LGC.PTI.GraphQL.Transport
                 var token = result.Data?.Login?.Token;
                 if (string.IsNullOrWhiteSpace(token)) throw new GraphQLRequestException("GraphQL login did not return a token.");
 
-                var expiresAt = ReadJwtExpiry(token);
-                if (expiresAt <= _clock()) throw new GraphQLRequestException("GraphQL login returned an expired JWT.");
-
+                // PTI controls token validity. Keep it in memory for at most 45
+                // minutes, then reauthenticate; do not assume it is a parsable JWT.
                 _token = token;
-                _expiresAt = expiresAt;
+                _expiresAt = _clock().Add(TokenCacheLifetime);
                 return token;
             }
             finally { _loginLock.Release(); }
         }
 
-        private bool TokenIsValid() => !string.IsNullOrEmpty(_token) && _clock().AddMinutes(5) < _expiresAt;
+        private bool TokenIsValid() => !string.IsNullOrEmpty(_token) && _clock() < _expiresAt;
 
         private async Task InvalidateTokenAsync(string rejectedToken, CancellationToken ct)
         {
@@ -208,20 +209,6 @@ namespace LGC.PTI.GraphQL.Transport
             if (response == null) throw new GraphQLRequestException("PTI returned an empty GraphQL response.");
             if (response.Errors?.Length > 0)
                 throw new GraphQLRequestException("PTI GraphQL error: " + string.Join("; ", response.Errors.Select(e => e?.Message ?? "Unknown error")));
-        }
-
-        private static DateTimeOffset ReadJwtExpiry(string token)
-        {
-            try
-            {
-                var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
-                if (jwt.ValidTo == DateTime.MinValue) throw new FormatException("JWT does not contain exp.");
-                return new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero);
-            }
-            catch (Exception ex) when (ex is SecurityTokenException || ex is ArgumentException || ex is FormatException)
-            {
-                throw new GraphQLRequestException("GraphQL login returned a JWT without a valid expiration.", ex);
-            }
         }
 
         private sealed class AuthorizedGraphQLRequest : GraphQLHttpRequest
