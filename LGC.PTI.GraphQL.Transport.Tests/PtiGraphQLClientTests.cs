@@ -231,6 +231,21 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
+        public void EmployeeWrongType_ReportsOperationAndPathWithoutExposingResponse()
+        {
+            var fake = new FakeHandler
+            {
+                OperationResponse = _ => Json("{\"data\":{\"getEmployees\":[{\"number\":\"0099\",\"pin\":\"00123\",\"active\":\"not-a-boolean\"}]}}")
+            };
+            var ex = Assert.ThrowsAsync<GraphQLRequestException>(
+                async () => await Client(fake).GetEmployeesAsync());
+            StringAssert.Contains("getEmployees", ex.Message);
+            StringAssert.Contains("JsonSerializationException", ex.Message);
+            StringAssert.Contains("active", ex.Message);
+            StringAssert.DoesNotContain("00123", ex.Message);
+        }
+
+        [Test]
         public void HttpServerError_ThrowsGraphQLRequestException()
         {
             var fake = new FakeHandler { OperationResponse = _ => Json("{}", HttpStatusCode.InternalServerError) };

@@ -145,7 +145,17 @@ namespace LGC.PTI.GraphQL.Transport
             }
             catch (JsonException ex)
             {
-                throw new GraphQLRequestException("PTI returned an invalid JSON response.", ex);
+                // Include the operation and field path to diagnose schema or serialization
+                // errors without exposing response bodies, employee PINs or Firebase tokens.
+                var operation = query == LoginMutation ? "login" :
+                    query == EmployeesQuery ? "getEmployees" : "addOrUpdateEmployees";
+                var fieldPath = ex is JsonReaderException reader ? reader.Path :
+                    ex is JsonSerializationException serialization ? serialization.Path : null;
+                var pathInfo = string.IsNullOrWhiteSpace(fieldPath) ? "" : " Path: " + fieldPath + ".";
+
+                throw new GraphQLRequestException(
+                    "PTI returned an invalid JSON response during " + operation +
+                    " (" + ex.GetType().Name + ")." + pathInfo, ex);
             }
         }
 
