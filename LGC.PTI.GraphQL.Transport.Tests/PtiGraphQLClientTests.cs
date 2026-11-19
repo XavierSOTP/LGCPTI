@@ -240,7 +240,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             var ex = Assert.ThrowsAsync<GraphQLRequestException>(
                 async () => await Client(fake).GetEmployeesAsync());
             StringAssert.Contains("getEmployees", ex.Message);
-            StringAssert.Contains("JsonSerializationException", ex.Message);
+            StringAssert.Contains("JsonReaderException", ex.Message);
             StringAssert.Contains("active", ex.Message);
             StringAssert.DoesNotContain("00123", ex.Message);
         }
