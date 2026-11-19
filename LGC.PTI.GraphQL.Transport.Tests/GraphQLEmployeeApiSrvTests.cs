@@ -88,7 +88,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         private static Employee ServerEmployee() => new Employee
         {
             Number = "99990001", Pin = "00123", FirstName = "Genetec", LastName = "IntegrationTest",
-            DepartmentNumber = "pti", Active = true, Type = "custom", UnrestrictedUsage = true
+            DepartmentNumber = "pti", Active = true, Deleted = false, Type = "custom", UnrestrictedUsage = true
         };
 
         [Test]
