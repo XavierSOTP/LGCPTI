@@ -107,7 +107,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         [Test]
         public async Task Update_DoesNotReadEmployeesFirst()
         {
-            var fake = new FakeClient { OnUpsert = e => new[] { new Employee { Number = e.Number, Status = "updated" } } };
+            var fake = new FakeClient { OnUpsert = e => new[] { new Employee { Number = e.Number, Deleted = false, Status = "updated" } } };
             var result = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryUpdateEmployee(OutEmployee()));
             Assert.AreEqual("updated", result.OperationStatus);
             Assert.AreEqual(0, fake.Reads);
@@ -122,6 +122,31 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             Assert.AreEqual("99990001", result.Single().EmployeeNumber);
             Assert.AreEqual("pti", result.Single().Department);
             Assert.True(result.Single().Active);
+        }
+
+        [Test]
+        public async Task GetEmployees_PreservesUnknownDeletionStatus()
+        {
+            var employee = ServerEmployee();
+            employee.Deleted = null;
+            var fake = new FakeClient { Employees = new[] { employee } };
+
+            var employees = await ExpectSuccessAsync(new GraphQLEmployeeApiSrv(fake).TryGetEmployees());
+
+            Assert.IsNull(employees.Single().Deleted);
+        }
+
+        [Test]
+        public async Task Deactivate_UnknownDeletionStatusFailsWithoutWriting()
+        {
+            var employee = ServerEmployee();
+            employee.Deleted = null;
+            var fake = new FakeClient { Employees = new[] { employee } };
+
+            await ExpectFailureAsync(new GraphQLEmployeeApiSrv(fake)
+                .TryUpdateEmployeeStatus(EmployeeStatusOutDto.Deactivated("99990001")));
+
+            Assert.AreEqual(0, fake.Writes);
         }
 
         [Test]

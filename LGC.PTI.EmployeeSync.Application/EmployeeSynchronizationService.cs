@@ -52,12 +52,12 @@ namespace LGC.PTI.EmployeeSync.Application
                 return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("PTI did not return employee records."));
 
             var matches = employees
-                .Where(employee => employee != null && !employee.Deleted &&
+                .Where(employee => employee != null && employee.Deleted != true &&
                     string.Equals(employee.Number, number.Value, StringComparison.OrdinalIgnoreCase))
                 .Take(2)
                 .ToList();
 
-            if (matches.Count != 1)
+            if (matches.Count != 1 || matches[0].Deleted != false)
                 return Prelude.FailAff<EmployeeSyncOutcome>(
                     Error.New($"Cannot safely update PTI employee status for {number.Value}: found {matches.Count} matching records."));
 

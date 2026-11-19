@@ -99,7 +99,7 @@ public sealed class EmployeeManager : IEmployeeManager
         var existingEmployees = ptiEmployees
             .Where(employee => !string.IsNullOrWhiteSpace(employee.EmployeeNumber))
             .GroupBy(employee => employee.EmployeeNumber, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
 
         Logger.LogInformation("PTI employee lookup created. ValidEmployeeCount: {EmployeeCount}", existingEmployees.Count);
 
@@ -127,7 +127,7 @@ public sealed class EmployeeManager : IEmployeeManager
     /// otherwise, a new PTI employee is created. API failures are logged and generate
     /// a Genetec incident.
     /// </remarks>
-    private async Task AddOrUpdateEmployeeAsyncImpl(EmployeeEntity entity, IReadOnlyDictionary<string, EmployeeInDto> existingEmployees)
+    private async Task AddOrUpdateEmployeeAsyncImpl(EmployeeEntity entity, IReadOnlyDictionary<string, List<EmployeeInDto>> existingEmployees)
     {
         Debug.Assert(entity.Active, $"{nameof(EmployeeOutDto)} should be active at this stage.");
 
@@ -135,8 +135,17 @@ public sealed class EmployeeManager : IEmployeeManager
 
         var empOutDto = Mapper.Map<EmployeeOutDto>(entity);
 
-        if (existingEmployees.ContainsKey(entity.EmployeeNumber))
+        if (existingEmployees.TryGetValue(entity.EmployeeNumber, out var matchingEmployees))
         {
+            // Never update a deleted/unknown remote record or an ambiguous duplicate.
+            if (matchingEmployees.Count != 1 || matchingEmployees[0].Deleted != false)
+            {
+                Logger.LogWarning(
+                    "Skipping PTI employee because its deleted state is not explicitly false or its number is ambiguous. EmployeeNumber: {EmployeeNumber}",
+                    entity.EmployeeNumber);
+                return;
+            }
+
             var action = CRUDAction.Updated;
 
             Logger.LogInformation("Employee already exists in PTI. Updating Employee. EmployeeNumber: {EmployeeNumber}", entity.EmployeeNumber);
@@ -232,6 +241,14 @@ public sealed class EmployeeManager : IEmployeeManager
 
         if (existingEmployee is not null && !string.IsNullOrWhiteSpace(existingEmployee.EmployeeNumber))
         {
+            if (existingEmployee.Deleted != false)
+            {
+                Logger.LogWarning(
+                    "Skipping PTI employee update because deleted is true or unknown. EmployeeNumber: {EmployeeNumber}",
+                    entity.EmployeeNumber);
+                return;
+            }
+
             var action = CRUDAction.Updated;
 
             Logger.LogInformation("Employee found in PTI. Updating Employee. EmployeeNumber: {EmployeeNumber}", entity.EmployeeNumber);
@@ -321,6 +338,14 @@ public sealed class EmployeeManager : IEmployeeManager
         if (string.IsNullOrWhiteSpace(employee.EmployeeNumber))
         {
             Logger.LogWarning("Employee was not found in PTI. Deactivation skipped. EmployeeNumber: {EmployeeNumber}", empEntity.EmployeeNumber);
+            return;
+        }
+
+        if (employee.Deleted != false)
+        {
+            Logger.LogWarning(
+                "Deactivation skipped because PTI employee is deleted or deletion state is unknown. EmployeeNumber: {EmployeeNumber}",
+                empEntity.EmployeeNumber);
             return;
         }
 

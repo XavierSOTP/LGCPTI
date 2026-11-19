@@ -108,7 +108,8 @@ namespace LGC.PTI.HTTPClient.GraphQL
             FirstName = source.FirstName,
             LastName = source.LastName,
             Department = source.DepartmentNumber,
-            Active = source.Active
+            Active = source.Active,
+            Deleted = source.Deleted
         };
 
         private static EmployeeInDto ToDto(PtiEmployeeSnapshot source) => new EmployeeInDto
@@ -117,7 +118,8 @@ namespace LGC.PTI.HTTPClient.GraphQL
             FirstName = source.FirstName,
             LastName = source.LastName,
             Department = source.DepartmentNumber,
-            Active = source.Active
+            Active = source.Active,
+            Deleted = source.Deleted
         };
 
         private static EmployeesResponse ToResponse(EmployeeSyncOutcome outcome)

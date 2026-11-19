@@ -13,13 +13,13 @@ namespace LGC.PTI.EmployeeSync.Application
         public string LastName { get; }
         public string DepartmentNumber { get; }
         public bool Active { get; }
-        public bool Deleted { get; }
+        public bool? Deleted { get; }
         public string Type { get; }
         public bool? UnrestrictedUsage { get; }
 
         public PtiEmployeeSnapshot(
             string number, string pin, string firstName, string lastName,
-            string departmentNumber, bool active, bool deleted, string type = null,
+            string departmentNumber, bool active, bool? deleted, string type = null,
             bool? unrestrictedUsage = null)
         {
             Number = number;
@@ -33,10 +33,12 @@ namespace LGC.PTI.EmployeeSync.Application
             UnrestrictedUsage = unrestrictedUsage;
         }
 
-        /// <summary>Only complete, non-deleted remote records can become write commands.</summary>
+        /// <summary>Only complete, explicitly non-deleted remote records can become write commands.</summary>
         public Fin<PtiEmployee> ToEmployee() =>
-            Deleted
-                ? Prelude.FinFail<PtiEmployee>(Error.New("Cannot synchronize a deleted PTI employee."))
+            Deleted != false
+                ? Prelude.FinFail<PtiEmployee>(Error.New(
+                    Deleted == true ? "Cannot synchronize a deleted PTI employee." :
+                    "Cannot synchronize an employee whose PTI deleted state is unknown."))
                 : PtiEmployee.Create(
                     Number, Pin, FirstName, LastName, DepartmentNumber,
                     Active, Type, UnrestrictedUsage);

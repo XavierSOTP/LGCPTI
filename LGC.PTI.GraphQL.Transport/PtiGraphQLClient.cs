@@ -33,7 +33,7 @@ namespace LGC.PTI.GraphQL.Transport
         [JsonProperty("lastName")] public string LastName { get; set; }
         [JsonProperty("departmentNumber")] public string DepartmentNumber { get; set; }
         [JsonProperty("active")] public bool Active { get; set; }
-        [JsonProperty("deleted")] public bool Deleted { get; set; }
+        [JsonProperty("deleted")] public bool? Deleted { get; set; }
         [JsonProperty("type")] public string Type { get; set; }
         [JsonProperty("unrestrictedUsage")] public bool? UnrestrictedUsage { get; set; }
         [JsonProperty("status")] public string Status { get; set; }

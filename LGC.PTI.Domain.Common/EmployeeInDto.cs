@@ -14,6 +14,10 @@ public sealed class EmployeeInDto : EmployeeBaseDto
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Include)]
     public bool Active { get; set; }
 
+    /// <summary>PTI GraphQL deletion state; null means unknown.</summary>
+    [JsonIgnore]
+    public bool? Deleted { get; set; }
+
     [JsonConverter(typeof(StringEnumConverter))]
     [JsonProperty(Required = Required.Always)]
     public Language Language { get; set; }

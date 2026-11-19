@@ -20,7 +20,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             EmployeeNumber.Create(value).IfFail(default(EmployeeNumber));
 
         private static PtiEmployeeSnapshot Snapshot(
-            string number = "99990001", bool deleted = false, string pin = "00123") =>
+            string number = "99990001", bool? deleted = false, string pin = "00123") =>
             new PtiEmployeeSnapshot(number, pin, "Genetec", "IntegrationTest",
                 "pti", true, deleted, "staff", true);
 
@@ -195,6 +195,29 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
+        public async Task Deactivate_UnknownDeletionStateFailsWithoutWriting()
+        {
+            var gateway = new FakeGateway { RemoteEmployees = new[] { Snapshot(deleted: null) } };
+            var fin = await new EmployeeSynchronizationService(gateway)
+                .ChangeActivationAsync(Number(), false).Run();
+            Assert.True(fin.IsFail);
+            Assert.AreEqual(0, gateway.Writes);
+        }
+
+        [Test]
+        public async Task Deactivate_KnownAndUnknownDuplicateFailsWithoutWriting()
+        {
+            var gateway = new FakeGateway
+            {
+                RemoteEmployees = new[] { Snapshot(deleted: false), Snapshot(deleted: null) }
+            };
+            var fin = await new EmployeeSynchronizationService(gateway)
+                .ChangeActivationAsync(Number(), false).Run();
+            Assert.True(fin.IsFail);
+            Assert.AreEqual(0, gateway.Writes);
+        }
+
+        [Test]
         public async Task Deactivate_DeletedEmployeeReturnsFinFailWithoutWriting()
         {
             var gateway = new FakeGateway { RemoteEmployees = new[] { Snapshot(deleted: true) } };
@@ -244,6 +267,7 @@ namespace LGC.PTI.GraphQL.Transport.Tests
                 "99990001", null, null, null, null, false, false);
             Assert.True(incomplete.ToEmployee().IsFail);
             Assert.True(Snapshot(deleted: true).ToEmployee().IsFail);
+            Assert.True(Snapshot(deleted: null).ToEmployee().IsFail);
         }
 
         [Test]

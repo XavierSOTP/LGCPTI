@@ -73,7 +73,7 @@ namespace LGC.PTI.HTTPClient.GraphQL
                     Error.New("PTI GraphQL upsert did not return exactly one employee."));
 
             var saved = result[0];
-            if (saved == null || saved.Deleted || !string.IsNullOrWhiteSpace(saved.Error) ||
+            if (saved == null || saved.Deleted != false || !string.IsNullOrWhiteSpace(saved.Error) ||
                 !string.Equals(saved.Number, employee.Number.Value, StringComparison.OrdinalIgnoreCase))
                 return Prelude.FinFail<EmployeeSyncOutcome>(
                     Error.New("PTI GraphQL returned an invalid employee upsert result."));

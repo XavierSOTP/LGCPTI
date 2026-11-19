@@ -246,6 +246,22 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         }
 
         [Test]
+        public async Task GetEmployees_AcceptsNullDeletedFlagAndPreservesItsMeaning()
+        {
+            var fake = new FakeHandler
+            {
+                OperationResponse = _ => Json("{\"data\":{\"getEmployees\":[{\"number\":\"000123\",\"pin\":\"00123\",\"active\":true,\"deleted\":null},{\"number\":\"000124\",\"pin\":\"00124\",\"active\":true,\"deleted\":false}]}}")
+            };
+
+            var employees = await Client(fake).GetEmployeesAsync();
+
+            Assert.AreEqual(2, employees.Count);
+            Assert.IsNull(employees[0].Deleted);
+            Assert.AreEqual(false, employees[1].Deleted);
+            Assert.AreEqual("00123", employees[0].Pin);
+        }
+
+        [Test]
         public void HttpServerError_ThrowsGraphQLRequestException()
         {
             var fake = new FakeHandler { OperationResponse = _ => Json("{}", HttpStatusCode.InternalServerError) };
