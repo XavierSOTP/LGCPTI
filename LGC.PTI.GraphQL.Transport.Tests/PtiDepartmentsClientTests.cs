@@ -38,6 +38,17 @@ namespace LGC.PTI.GraphQL.Transport.Tests
                 token, new HttpClient(fake));
 
         [Test]
+        public async Task GetDepartments_WithoutVerifiedTokenDoesNotSendRequest()
+        {
+            var fake = new FakeHandler();
+            var result = await Query(fake, "");
+
+            Assert.False(result.Success);
+            Assert.True(result.AuthenticationFailed);
+            Assert.IsNull(fake.RequestBody);
+        }
+
+        [Test]
         public async Task GetDepartments_UsesRawTokenAndReturnsNumberAndName()
         {
             var fake = new FakeHandler();
