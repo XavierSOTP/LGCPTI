@@ -17,7 +17,6 @@ on:
       - main
       - feature/graphql-transport-unit-tests
       - Branch1
-      - Branch2
     paths:
       - 'LGC.PTI.GraphQL.Transport/**'
       - 'LGC.PTI.GraphQL.Transport.Tests/**'
