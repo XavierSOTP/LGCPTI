@@ -214,7 +214,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
     /// <summary>
     /// Gets whether a connection test can be started.
     /// </summary>
-    public bool IsNotTesting => !_isTesting;
+    public bool IsNotTesting => !_isTesting && !_isLoadingDepartments;
 
     /// <summary>
     /// Gets the message returned by the latest connection test.
@@ -295,6 +295,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
             _isLoadingDepartments = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsNotLoadingDepartments));
+            OnPropertyChanged(nameof(IsNotTesting));
         }
     }
 
@@ -576,7 +577,10 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
                     .OrderBy(d => d.Number, StringComparer.OrdinalIgnoreCase)
                     .ToList();
             else if (result.AuthenticationFailed)
+            {
                 InvalidateConnection();
+                DepartmentsStatusMessage = result.Message;
+            }
         }
         finally
         {

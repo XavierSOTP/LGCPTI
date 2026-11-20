@@ -109,7 +109,11 @@ public static class LGCConnectionTester
     /// Gets PTI department identifiers and names with the token obtained by Test Connection.
     /// This operation is read-only and does not store credentials or tokens on disk.
     /// </summary>
-    public static async Task<DepartmentsResult> GetDepartmentsAsync(string endpoint, string token)
+    public static Task<DepartmentsResult> GetDepartmentsAsync(string endpoint, string token) =>
+        GetDepartmentsAsync(endpoint, token, Client);
+
+    // Allows isolated HTTP testing without live PTI credentials or endpoint calls.
+    internal static async Task<DepartmentsResult> GetDepartmentsAsync(string endpoint, string token, HttpClient client)
     {
         if (string.IsNullOrWhiteSpace(token) ||
             !Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
@@ -130,7 +134,7 @@ public static class LGCConnectionTester
 
             // PTI expects the Firebase ID token directly, without a Bearer prefix.
             request.Headers.TryAddWithoutValidation("Authorization", token);
-            using var response = await Client.SendAsync(request).ConfigureAwait(false);
+            using var response = await client.SendAsync(request).ConfigureAwait(false);
 
             if (response.StatusCode == HttpStatusCode.Unauthorized ||
                 response.StatusCode == HttpStatusCode.Forbidden)

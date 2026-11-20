@@ -33,5 +33,6 @@
     <Compile Include="..\LGC.PTI.Shared.Common\Models\CardNumberHelper.cs" Link="Production\CardNumberHelper.cs" />
     <Compile Include="..\LGC.PTI.Shared.Common\Mapping\CardholderModelRegister.cs" Link="Production\CardholderModelRegister.cs" />
     <Compile Include="..\LGC.PTI.Domain.Common\EmployeeEntity.cs" Link="Production\EmployeeEntity.cs" />
+    <Compile Include="..\LGC.PTI.Plugin.Client\ConnectionTestHelper\LGCConnectionTester.cs" Link="Production\LGCConnectionTester.cs" />
   </ItemGroup>
 </Project>
