@@ -101,3 +101,4 @@ namespace LGC.PTI.GraphQL.Transport.Tests
             Assert.AreEqual(0, result.Departments.Count);
         }
     }
+}
