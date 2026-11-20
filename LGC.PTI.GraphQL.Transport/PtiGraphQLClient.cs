@@ -193,11 +193,41 @@ namespace LGC.PTI.GraphQL.Transport
 
         private static IReadOnlyList<Employee> ValidateEmployees(List<Employee> employees, string field)
         {
-            if (employees == null) throw new GraphQLRequestException("GraphQL response did not contain a valid " + field + " array.");
-            if (employees.Any(employee => employee == null || !string.IsNullOrWhiteSpace(employee.Error) ||
-                (!string.IsNullOrEmpty(employee.Status) && employee.Status != "new" && employee.Status != "updated")))
-                throw new GraphQLRequestException("PTI returned an employee with an error or unrecognized status.");
+            if (employees == null)
+                throw new GraphQLRequestException("GraphQL response did not contain a valid " + field + " array.");
+
+            for (var index = 0; index < employees.Count; index++)
+            {
+                var employee = employees[index];
+                if (employee == null)
+                    throw new GraphQLRequestException("PTI " + field + " returned a null employee at index " + index + ".");
+
+                if (!string.IsNullOrWhiteSpace(employee.Error))
+                    throw new GraphQLRequestException(
+                        "PTI " + field + " rejected employee at index " + index +
+                        ". Server error: " + SafeErrorMessage(employee.Error));
+
+                if (!string.IsNullOrEmpty(employee.Status) &&
+                    employee.Status != "new" && employee.Status != "updated")
+                    throw new GraphQLRequestException(
+                        "PTI " + field + " returned an unexpected status at index " + index +
+                        ": " + SafeErrorMessage(employee.Status));
+            }
+
             return employees;
+        }
+
+        // PTI server errors can contain user-provided text. Keep diagnostics brief
+        // and avoid exposing sensitive values in plugin logs.
+        private static string SafeErrorMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return "(empty)";
+            var singleLine = message.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ').Trim();
+            singleLine = System.Text.RegularExpressions.Regex.Replace(
+                singleLine,
+                @"(?i)\b(pin|password|token|authorization)\b\s*[:=]\s*(?:""[^""]*""|'[^']*'|[^\s,;]+)",
+                "$1=[REDACTED]");
+            return singleLine.Length > 300 ? singleLine.Substring(0, 300) + "..." : singleLine;
         }
 
         private static bool IsJsonResponse(HttpResponseMessage response)

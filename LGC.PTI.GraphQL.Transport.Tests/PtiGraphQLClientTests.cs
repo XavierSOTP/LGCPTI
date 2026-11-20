@@ -129,9 +129,39 @@ namespace LGC.PTI.GraphQL.Transport.Tests
         {
             var fake = new FakeHandler
             {
-                OperationResponse = _ => Json("{\"data\":{\"addOrUpdateEmployees\":[{\"number\":\"99990001\",\"status\":\"updated\",\"error\":\"Rejected\"}]}}")
+                OperationResponse = _ => Json("{\"data\":{\"addOrUpdateEmployees\":[{\"number\":\"99990001\",\"status\":\"updated\",\"error\":\"Department not found\"}]}}")
             };
-            Assert.ThrowsAsync<GraphQLRequestException>(async () => await Client(fake).AddOrUpdateEmployeesAsync(new[] { EmployeeInput() }));
+            var ex = Assert.ThrowsAsync<GraphQLRequestException>(
+                async () => await Client(fake).AddOrUpdateEmployeesAsync(new[] { EmployeeInput() }));
+            StringAssert.Contains("addOrUpdateEmployees", ex.Message);
+            StringAssert.Contains("Department not found", ex.Message);
+            StringAssert.DoesNotContain("00123", ex.Message);
+        }
+
+        [Test]
+        public void UnexpectedEmployeeStatus_ReportsActualStatus()
+        {
+            var fake = new FakeHandler
+            {
+                OperationResponse = _ => Json("{\"data\":{\"addOrUpdateEmployees\":[{\"number\":\"99990001\",\"status\":\"rejected\",\"error\":null}]}}")
+            };
+            var ex = Assert.ThrowsAsync<GraphQLRequestException>(
+                async () => await Client(fake).AddOrUpdateEmployeesAsync(new[] { EmployeeInput() }));
+            StringAssert.Contains("unexpected status", ex.Message);
+            StringAssert.Contains("rejected", ex.Message);
+        }
+
+        [Test]
+        public void EmployeeBusinessError_RedactsSensitiveValues()
+        {
+            var fake = new FakeHandler
+            {
+                OperationResponse = _ => Json("{\"data\":{\"addOrUpdateEmployees\":[{\"error\":\"pin: 00123\"}]}}")
+            };
+            var ex = Assert.ThrowsAsync<GraphQLRequestException>(
+                async () => await Client(fake).AddOrUpdateEmployeesAsync(new[] { EmployeeInput() }));
+            StringAssert.Contains("[REDACTED]", ex.Message);
+            StringAssert.DoesNotContain("00123", ex.Message);
         }
 
         [Test]
