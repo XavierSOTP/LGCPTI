@@ -53,7 +53,7 @@ public static class LGCConnectionTester
 
         try
         {
-            var payload = JsonSerializer.Serialize(new
+            var payload = System.Text.Json.JsonSerializer.Serialize(new
             {
                 query = "mutation Login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }",
                 variables = new { email, password }
@@ -95,7 +95,7 @@ public static class LGCConnectionTester
         {
             return Fail("Unable to reach the GraphQL endpoint. Check URL and network.");
         }
-        catch (JsonException)
+        catch (System.Text.Json.JsonException)
         {
             return Fail("PTI returned an invalid GraphQL response.");
         }
@@ -122,7 +122,7 @@ public static class LGCConnectionTester
 
         try
         {
-            var payload = JsonSerializer.Serialize(new
+            var payload = System.Text.Json.JsonSerializer.Serialize(new
             {
                 query = "query GetDepartments { getDepartments { number name } }"
             });
@@ -208,7 +208,7 @@ public static class LGCConnectionTester
         {
             return DepartmentsFail("Could not reach PTI to retrieve departments.");
         }
-        catch (JsonException)
+        catch (System.Text.Json.JsonException)
         {
             return DepartmentsFail("PTI returned an invalid departments response.");
         }
