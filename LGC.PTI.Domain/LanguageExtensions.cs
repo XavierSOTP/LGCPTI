@@ -1,5 +1,6 @@
 ﻿using LanguageExt.Common;
 using SoftSolute.Common.Utilities;
+using SoftSolute.Utiities.Plugin.Adapters;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Unit = LanguageExt.Unit;
@@ -851,8 +852,7 @@ namespace LGC.PTI.Domain
         {
             try
             {
-                ValueTask<Fin<A>> valueTask = source.Run();
-                return valueTask.IsCompletedSuccessfully ? valueTask.Result : valueTask.AsTask().GetAwaiter().GetResult();
+                return LanguageExtAffExtensions.RunSync(source);
             }
             catch (Exception thisException)
             {

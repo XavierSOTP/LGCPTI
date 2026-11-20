@@ -8,6 +8,7 @@ using LGC.PTI.BussinesLogic;
 using LGC.PTI.Domain.TypeRepresentation;
 using Microsoft.Extensions.DependencyInjection;
 using SoftSolute.Plugin.Common.EntityDefinitions;
+using SoftSolute.Utiities.Plugin.Adapters;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -499,8 +500,8 @@ public partial class PluginModule : BasePluginModule<LGCPluginConfig>, IPluginDa
 
     private Aff<string> TestMethod()
     {
-        return Prelude.Aff<string>(
-            () => new ValueTask<string>("test"));
+        return LanguageExtAffExtensions.Aff<string>(
+            () => Task.FromResult("test"));
     }
 
     private bool EnsurePluginConfigIsValid()
