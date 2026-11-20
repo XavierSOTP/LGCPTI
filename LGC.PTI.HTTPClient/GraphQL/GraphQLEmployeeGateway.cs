@@ -8,12 +8,13 @@ using LanguageExt.Common;
 using LGC.PTI.EmployeeSync.Application;
 using LGC.PTI.EmployeeSync.Domain;
 using LGC.PTI.GraphQL.Transport;
+using SoftSolute.Utiities.Plugin.Adapters;
 
 namespace LGC.PTI.HTTPClient.GraphQL
 {
     /// <summary>
-    /// GraphQL anti-corruption adapter. Expected API/domain errors return Fin.Fail.
-    /// Unexpected network exceptions are handled by the Aff effect boundary.
+    /// GraphQL anti-corruption adapter. Validation and transport failures are captured
+    /// as Fin.Fail by LanguageExtAffExtensions.Aff, using the runtime-compatible Prelude.Aff.
     /// </summary>
     public sealed class GraphQLEmployeeGateway : IPtiEmployeeGateway
     {
@@ -28,18 +29,17 @@ namespace LGC.PTI.HTTPClient.GraphQL
                 return Prelude.FailAff<IReadOnlyList<PtiEmployeeSnapshot>>(
                     Error.New("GraphQL client is not configured."));
 
-            return Prelude.AffMaybe(() => GetEmployeesCoreAsync(cancellationToken));
+            return LanguageExtAffExtensions.Aff<IReadOnlyList<PtiEmployeeSnapshot>>(
+                () => GetEmployeesCoreAsync(cancellationToken));
         }
 
-        private async ValueTask<Fin<IReadOnlyList<PtiEmployeeSnapshot>>> GetEmployeesCoreAsync(CancellationToken ct)
+        private async Task<IReadOnlyList<PtiEmployeeSnapshot>> GetEmployeesCoreAsync(CancellationToken ct)
         {
             var employees = await _client.GetEmployeesAsync(ct).ConfigureAwait(false);
             if (employees == null || employees.Any(employee => employee == null))
-                return Prelude.FinFail<IReadOnlyList<PtiEmployeeSnapshot>>(
-                    Error.New("PTI GraphQL returned an invalid employee collection."));
+                throw new InvalidOperationException("PTI GraphQL returned an invalid employee collection.");
 
-            var snapshots = employees.Select(ToSnapshot).ToList();
-            return Prelude.FinSucc<IReadOnlyList<PtiEmployeeSnapshot>>(snapshots);
+            return employees.Select(ToSnapshot).ToList();
         }
 
         public Aff<EmployeeSyncOutcome> SaveAsync(
@@ -50,10 +50,11 @@ namespace LGC.PTI.HTTPClient.GraphQL
             if (employee == null)
                 return Prelude.FailAff<EmployeeSyncOutcome>(Error.New("Employee is required."));
 
-            return Prelude.AffMaybe(() => SaveCoreAsync(employee, cancellationToken));
+            return LanguageExtAffExtensions.Aff<EmployeeSyncOutcome>(
+                () => SaveCoreAsync(employee, cancellationToken));
         }
 
-        private async ValueTask<Fin<EmployeeSyncOutcome>> SaveCoreAsync(PtiEmployee employee, CancellationToken ct)
+        private async Task<EmployeeSyncOutcome> SaveCoreAsync(PtiEmployee employee, CancellationToken ct)
         {
             var input = new EmployeeInput
             {
@@ -69,14 +70,12 @@ namespace LGC.PTI.HTTPClient.GraphQL
 
             var result = await _client.AddOrUpdateEmployeesAsync(new[] { input }, ct).ConfigureAwait(false);
             if (result == null || result.Count != 1)
-                return Prelude.FinFail<EmployeeSyncOutcome>(
-                    Error.New("PTI GraphQL upsert did not return exactly one employee."));
+                throw new InvalidOperationException("PTI GraphQL upsert did not return exactly one employee.");
 
             var saved = result[0];
             if (saved == null || saved.Deleted != false || !string.IsNullOrWhiteSpace(saved.Error) ||
                 !string.Equals(saved.Number, employee.Number.Value, StringComparison.OrdinalIgnoreCase))
-                return Prelude.FinFail<EmployeeSyncOutcome>(
-                    Error.New("PTI GraphQL returned an invalid employee upsert result."));
+                throw new InvalidOperationException("PTI GraphQL returned an invalid employee upsert result.");
 
             EmployeeChangeKind change;
             switch (saved.Status)
@@ -88,11 +87,12 @@ namespace LGC.PTI.HTTPClient.GraphQL
                     change = EmployeeChangeKind.Updated;
                     break;
                 default:
-                    return Prelude.FinFail<EmployeeSyncOutcome>(
-                        Error.New("PTI GraphQL returned an unrecognized employee operation status."));
+                    throw new InvalidOperationException("PTI GraphQL returned an unrecognized employee operation status.");
             }
 
-            return EmployeeSyncOutcome.Create(employee.Number, change, ToSnapshot(saved));
+            return EmployeeSyncOutcome.Create(employee.Number, change, ToSnapshot(saved)).Match(
+                Fail: error => throw new InvalidOperationException(error.Message),
+                Succ: outcome => outcome);
         }
 
         private static PtiEmployeeSnapshot ToSnapshot(Employee employee) =>
