@@ -46,6 +46,13 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
     /// The command that initiates a connection test operation.
     /// </summary>
     private ICommand? _testConnectionCommand;
+    private ICommand? _getDepartmentsCommand;
+
+    private bool _isConnectionSuccessful;
+    private bool _isLoadingDepartments;
+    private IReadOnlyCollection<PtiDepartment> _departments = Array.Empty<PtiDepartment>();
+    private string _departmentsStatusMessage = string.Empty;
+    private string _connectionToken = string.Empty;
 
     /// <summary>
     /// Indicates whether cardholder groups are currently being loaded or refreshed.
@@ -114,6 +121,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         {
             if (PluginConfig.GraphQLUrl == value) return;
             PluginConfig.GraphQLUrl = value;
+            InvalidateConnection();
             IsDirty = true;
             OnPropertyChanged();
         }
@@ -127,6 +135,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         {
             if (PluginConfig.GraphQLEmail == value) return;
             PluginConfig.GraphQLEmail = value;
+            InvalidateConnection();
             IsDirty = true;
             OnPropertyChanged();
         }
@@ -140,6 +149,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         {
             if (PluginConfig.GraphQLPassword == value) return;
             PluginConfig.GraphQLPassword = value;
+            InvalidateConnection();
             IsDirty = true;
             OnPropertyChanged();
         }
@@ -197,6 +207,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
             _isTesting = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsNotTesting));
+            OnPropertyChanged(nameof(IsNotLoadingDepartments));
         }
     }
 
@@ -262,6 +273,61 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
     /// </summary>
     public ICommand TestConnectionCommand =>
         _testConnectionCommand ??= new AsyncRelayCommand(RunTestAsync);
+
+    /// <summary>Get Departments is available only after successful authentication.</summary>
+    public bool IsConnectionSuccessful
+    {
+        get => _isConnectionSuccessful;
+        private set
+        {
+            if (_isConnectionSuccessful == value) return;
+            _isConnectionSuccessful = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsLoadingDepartments
+    {
+        get => _isLoadingDepartments;
+        private set
+        {
+            if (_isLoadingDepartments == value) return;
+            _isLoadingDepartments = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsNotLoadingDepartments));
+        }
+    }
+
+    public bool IsNotLoadingDepartments => !IsLoadingDepartments && !IsTesting;
+
+    public IReadOnlyCollection<PtiDepartment> Departments
+    {
+        get => _departments;
+        private set
+        {
+            _departments = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasDepartments));
+        }
+    }
+
+    public bool HasDepartments => Departments.Count > 0;
+
+    public string DepartmentsStatusMessage
+    {
+        get => _departmentsStatusMessage;
+        private set
+        {
+            _departmentsStatusMessage = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasDepartmentsStatus));
+        }
+    }
+
+    public bool HasDepartmentsStatus => !string.IsNullOrWhiteSpace(DepartmentsStatusMessage);
+
+    public ICommand GetDepartmentsCommand =>
+        _getDepartmentsCommand ??= new AsyncRelayCommand(LoadDepartmentsAsync);
 
     #endregion
 
@@ -351,6 +417,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
         base.Deactivate();
 
         Workspace.Sdk.EntitiesInvalidated -= EngineOnEntitiesInvalidated;
+        InvalidateConnection();
     }
 
     /// <summary>
@@ -358,6 +425,7 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
     /// </summary>
     protected override void Refresh()
     {
+        InvalidateConnection();
         _isLoadingCardholderGroups = true;
 
         try
@@ -423,31 +491,96 @@ public class ConfigPage : PluginConfigPageBase<ConfigPage, LGCPluginConfig, Conf
     /// <summary>
     /// Tests the configured API credentials and updates the connection status.
     /// </summary>
+    private void InvalidateConnection()
+    {
+        _connectionToken = string.Empty;
+        IsConnectionSuccessful = false;
+        Departments = Array.Empty<PtiDepartment>();
+        DepartmentsStatusMessage = string.Empty;
+        TestStatusVisibility = Visibility.Collapsed;
+    }
+
     private async Task RunTestAsync()
     {
+        if (IsTesting || IsLoadingDepartments) return;
+
+        var endpoint = GraphQLUrl;
+        var email = GraphQLEmail;
+        var password = GraphQLPassword;
+
+        InvalidateConnection();
         IsTesting = true;
-        TestStatusVisibility = Visibility.Collapsed;
-
-        var result = await LGCConnectionTester.TestAsync(
-            endpoint: GraphQLUrl,
-            email: GraphQLEmail,
-            password: GraphQLPassword);
-
-        TestStatusIcon = result.Success ? "✔" : "✘";
-        TestStatusMessage = result.Message;
-
-        TestStatusBackground = result.Success
-            ? new SolidColorBrush(Color.FromRgb(34, 139, 34))
-            : new SolidColorBrush(Color.FromRgb(180, 40, 40));
-
-        TestStatusVisibility = Visibility.Visible;
-
-        IsTesting = false;
-
-        if (result.Success)
+        try
         {
+            var result = await LGCConnectionTester.TestAsync(endpoint, email, password);
+
+            // An in-flight test must not validate credentials changed by the user.
+            var settingsUnchanged = endpoint == GraphQLUrl &&
+                email == GraphQLEmail && password == GraphQLPassword;
+
+            if (!settingsUnchanged)
+            {
+                TestStatusIcon = "✘";
+                TestStatusMessage = "Connection settings changed. Test Connection again.";
+            }
+            else
+            {
+                _connectionToken = result.Success ? result.Token : string.Empty;
+                IsConnectionSuccessful = result.Success && !string.IsNullOrWhiteSpace(_connectionToken);
+                TestStatusIcon = IsConnectionSuccessful ? "✔" : "✘";
+                TestStatusMessage = result.Message;
+            }
+
+            TestStatusBackground = IsConnectionSuccessful
+                ? new SolidColorBrush(Color.FromRgb(34, 139, 34))
+                : new SolidColorBrush(Color.FromRgb(180, 40, 40));
+            TestStatusVisibility = Visibility.Visible;
+        }
+        finally
+        {
+            IsTesting = false;
+        }
+
+        // Preserve the existing transient connection status behavior.
+        if (IsConnectionSuccessful)
+        {
+            var verifiedToken = _connectionToken;
             await Task.Delay(10_000);
-            TestStatusVisibility = Visibility.Collapsed;
+            if (_connectionToken == verifiedToken)
+                TestStatusVisibility = Visibility.Collapsed;
+        }
+    }
+
+    private async Task LoadDepartmentsAsync()
+    {
+        if (!IsConnectionSuccessful || IsLoadingDepartments || IsTesting ||
+            string.IsNullOrWhiteSpace(_connectionToken))
+            return;
+
+        var endpoint = GraphQLUrl;
+        var token = _connectionToken;
+
+        IsLoadingDepartments = true;
+        Departments = Array.Empty<PtiDepartment>();
+        DepartmentsStatusMessage = string.Empty;
+        try
+        {
+            var result = await LGCConnectionTester.GetDepartmentsAsync(endpoint, token);
+
+            // Do not display results obtained for an obsolete connection.
+            if (_connectionToken != token || GraphQLUrl != endpoint) return;
+
+            DepartmentsStatusMessage = result.Message;
+            if (result.Success)
+                Departments = result.Departments
+                    .OrderBy(d => d.Number, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            else if (result.AuthenticationFailed)
+                InvalidateConnection();
+        }
+        finally
+        {
+            IsLoadingDepartments = false;
         }
     }
 
